@@ -1,6 +1,6 @@
 import AdminLayout from "@/components/AdminLayout";
 import SectionCard from "@/components/SectionCard";
-import { Building2, Users, Inbox, TrendingUp, MessageSquare, ArrowRight } from "lucide-react";
+import { Building2, Users, Inbox, TrendingUp, MessageSquare, ArrowRight, ShieldCheck } from "lucide-react";
 import { StatsSkeleton, TableSkeleton } from "@/components/Skeletons";
 import { useAdminStats, useAdminInterestRequests } from "@/hooks/useAdmin";
 import { Link } from "react-router-dom";
