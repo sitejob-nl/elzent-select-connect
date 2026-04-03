@@ -17,6 +17,7 @@ import AdminKlanten from "./pages/admin/AdminKlanten";
 import AdminLeads from "./pages/admin/AdminLeads";
 import AdminToegang from "./pages/admin/AdminToegang";
 import NotFound from "./pages/NotFound";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
+          <ErrorBoundary>
           <Routes>
             <Route path="/" element={<LoginPage />} />
             {/* Client routes */}
@@ -42,6 +44,7 @@ const App = () => (
             <Route path="/admin/toegang" element={<AdminRoute><AdminToegang /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -37,13 +37,23 @@ export function useUpsertProperty() {
       image_url?: string;
       tags?: string[];
     }) => {
+      let propertyId = property.id;
+
       if (property.id) {
         const { id, ...rest } = property;
         const { error } = await supabase.from("properties").update(rest).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("properties").insert(property);
+        const { data, error } = await supabase.from("properties").insert(property).select("id").single();
         if (error) throw error;
+        propertyId = data.id;
+      }
+
+      // Trigger email notifications when publishing
+      if (property.status === "published" && propertyId) {
+        supabase.functions.invoke("notify-new-match", {
+          body: { property_id: propertyId },
+        }).catch(() => {}); // fire-and-forget, don't block the UI
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-properties"] }),

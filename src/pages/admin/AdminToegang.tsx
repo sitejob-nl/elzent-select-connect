@@ -1,5 +1,6 @@
 import AdminLayout from "@/components/AdminLayout";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle } from "lucide-react";
+import { TableSkeleton } from "@/components/Skeletons";
 import { useAdminAccessRequests, useReviewAccessRequest } from "@/hooks/useAdmin";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +37,7 @@ export default function AdminToegang() {
         <p className="text-muted-foreground font-body mt-1">{pending.length} openstaand</p>
 
         {isLoading ? (
-          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          <div className="mt-8"><TableSkeleton rows={3} cols={2} /></div>
         ) : (
           <>
             {/* Pending */}

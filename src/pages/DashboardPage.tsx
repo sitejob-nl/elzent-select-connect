@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
-import { Heart, TrendingUp, Sparkles, Loader2 } from "lucide-react";
+import { Heart, TrendingUp, Sparkles } from "lucide-react";
+import { StatsSkeleton, MatchCardSkeleton } from "@/components/Skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProperties } from "@/hooks/useProperties";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -74,8 +75,8 @@ const DashboardPage = () => {
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {Array.from({ length: 2 }).map((_, i) => <MatchCardSkeleton key={i} />)}
             </div>
           ) : matches.length === 0 ? (
             <div className="rounded-xl border border-border bg-card p-8 text-center">

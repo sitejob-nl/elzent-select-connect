@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
-import { MapPin, Home, PiggyBank, MessageSquare, Loader2 } from "lucide-react";
+import { MapPin, Home, PiggyBank, MessageSquare } from "lucide-react";
+import { ProfileSkeleton } from "@/components/Skeletons";
 import { toast } from "sonner";
 import { usePreferences, useSavePreferences } from "@/hooks/usePreferences";
 
@@ -75,8 +76,8 @@ const ProfilePage = () => {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="container mx-auto px-4 py-8">
+          <ProfileSkeleton />
         </div>
       </AppLayout>
     );

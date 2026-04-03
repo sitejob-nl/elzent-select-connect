@@ -1,5 +1,6 @@
 import AdminLayout from "@/components/AdminLayout";
-import { Building2, Users, Inbox, TrendingUp, MessageSquare, Loader2 } from "lucide-react";
+import { Building2, Users, Inbox, TrendingUp, MessageSquare } from "lucide-react";
+import { StatsSkeleton, TableSkeleton } from "@/components/Skeletons";
 import { useAdminStats, useAdminInterestRequests } from "@/hooks/useAdmin";
 import { Link } from "react-router-dom";
 
@@ -23,8 +24,9 @@ export default function AdminDashboard() {
         <p className="text-muted-foreground font-body mt-1">Overzicht van het platform.</p>
 
         {isLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="mt-8 space-y-8">
+            <StatsSkeleton />
+            <TableSkeleton rows={3} cols={3} />
           </div>
         ) : (
           <>

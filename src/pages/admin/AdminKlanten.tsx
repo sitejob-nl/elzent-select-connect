@@ -1,5 +1,6 @@
 import AdminLayout from "@/components/AdminLayout";
-import { Loader2, MapPin, Home, PiggyBank, Users } from "lucide-react";
+import { MapPin, Home, PiggyBank, Users } from "lucide-react";
+import { TableSkeleton } from "@/components/Skeletons";
 import { useAdminClients } from "@/hooks/useAdmin";
 
 export default function AdminKlanten() {
@@ -12,7 +13,7 @@ export default function AdminKlanten() {
         <p className="text-muted-foreground font-body mt-1">{clients?.length ?? 0} geregistreerde beleggers</p>
 
         {isLoading ? (
-          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          <div className="mt-8"><TableSkeleton rows={4} cols={3} /></div>
         ) : (clients ?? []).length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-8 text-center mt-8">
             <Users className="h-8 w-8 text-muted-foreground mx-auto mb-3" />

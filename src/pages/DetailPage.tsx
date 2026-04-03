@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Check, ArrowLeft, MessageSquare, Heart, Eye, Loader2 } from "lucide-react";
+import { Sparkles, Check, ArrowLeft, MessageSquare, Heart, Eye } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useProperty } from "@/hooks/useProperties";
 import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 import { useSubmitInterest, useInterestRequests } from "@/hooks/useInterest";
@@ -28,8 +29,13 @@ const DetailPage = () => {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="container mx-auto px-4 py-6 space-y-8">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-64 md:h-96 w-full rounded-2xl" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+          </div>
+          <Skeleton className="h-32 rounded-xl" />
         </div>
       </AppLayout>
     );

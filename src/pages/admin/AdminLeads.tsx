@@ -1,5 +1,6 @@
 import AdminLayout from "@/components/AdminLayout";
-import { Loader2, Mail, Archive, UserPlus } from "lucide-react";
+import { Mail, Archive, UserPlus } from "lucide-react";
+import { TableSkeleton } from "@/components/Skeletons";
 import { useAdminLeads, useUpdateLead } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,7 +31,7 @@ export default function AdminLeads() {
         <p className="text-muted-foreground font-body mt-1">{leads?.length ?? 0} leads</p>
 
         {isLoading ? (
-          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          <div className="mt-8"><TableSkeleton rows={4} cols={3} /></div>
         ) : leads?.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-8 text-center mt-8">
             <p className="text-muted-foreground font-body">Geen leads.</p>

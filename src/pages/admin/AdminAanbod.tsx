@@ -1,7 +1,8 @@
 import { useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { TableSkeleton } from "@/components/Skeletons";
 import { useAdminProperties, useUpsertProperty, useSoftDeleteProperty } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
 
@@ -205,7 +206,7 @@ export default function AdminAanbod() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          <TableSkeleton rows={5} cols={5} />
         ) : (
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="hidden sm:grid grid-cols-[1fr_120px_80px_100px_80px] gap-4 px-5 py-3 border-b border-border bg-muted/30 text-xs font-body text-muted-foreground font-semibold">

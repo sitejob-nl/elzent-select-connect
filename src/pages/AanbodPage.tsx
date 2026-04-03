@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
-import { Heart, Loader2, Search } from "lucide-react";
+import { Heart, Search } from "lucide-react";
+import { PropertyListSkeleton } from "@/components/Skeletons";
 import { useProperties } from "@/hooks/useProperties";
 import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 
@@ -78,9 +79,7 @@ const AanbodPage = () => {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+          <PropertyListSkeleton />
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground font-body">Geen objecten gevonden.</p>
