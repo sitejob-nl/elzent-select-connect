@@ -31,20 +31,23 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             <span className="hidden sm:inline text-[10px] font-body tracking-wider text-muted-foreground/60 ml-1">powered by Elzent Estates</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`px-4 py-2 rounded-md text-sm font-body transition-colors ${
-                  location.pathname === item.path
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <nav className="hidden md:flex items-center gap-8">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`nav-link inline-flex items-center px-1 pt-1 pb-[18px] border-b-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "active text-primary border-primary"
+                      : "border-transparent text-muted-foreground hover:text-primary"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="flex items-center gap-3">
@@ -52,8 +55,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
               <Bell className="h-5 w-5 text-muted-foreground" />
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
             </button>
-            <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
-              <span className="text-xs font-bold text-secondary-foreground">{initials}</span>
+            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center cursor-pointer" onClick={() => navigate("/profiel")}>
+              <span className="text-xs font-bold text-primary-foreground font-display">{initials}</span>
             </div>
             <button
               onClick={handleSignOut}

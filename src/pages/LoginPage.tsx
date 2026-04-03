@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mail, Lock, UserPlus, Loader2 } from "lucide-react";
+import { Mail, Lock, UserPlus, Loader2, ShieldCheck, Building2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import heroImg from "@/assets/hero-building.jpg";
@@ -14,7 +14,6 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect if already logged in — wait for profile to be loaded so isAdmin is accurate
   useEffect(() => {
     if (session && !authLoading && profile) {
       navigate(isAdmin ? "/admin" : "/dashboard", { replace: true });
@@ -38,37 +37,35 @@ const LoginPage = () => {
       setIsLoading(false);
       return;
     }
-
-    // Navigation happens via auth state change + redirect above
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left — Image */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <img src={heroImg} alt="Luxury building" className="absolute inset-0 w-full h-full object-cover" width={1024} height={1536} />
-        <div className="absolute inset-0 bg-gradient-to-t from-secondary/90 via-secondary/40 to-transparent" />
-        <div className="relative z-10 flex flex-col justify-end p-12">
-          <span className="inline-block px-3 py-1 rounded-full border border-primary/40 text-primary text-xs font-body tracking-wider mb-4 w-fit">
-            Exclusief
-          </span>
-          <p className="font-body text-primary-foreground/80 text-base max-w-md leading-relaxed">
-            Elk object op ons platform is persoonlijk gecontroleerd en geanalyseerd door onze specialisten.
-          </p>
+    <div className="min-h-screen flex flex-col md:flex-row" style={{ height: "100vh", overflow: "hidden" }}>
+      {/* Left — Form */}
+      <div className="w-full md:w-[480px] lg:w-[560px] flex flex-col justify-between p-8 md:p-12 lg:p-16 bg-card shadow-xl z-10 overflow-y-auto">
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <div className="text-primary">
+            <svg fill="none" height="36" viewBox="0 0 24 24" width="36">
+              <path d="M4 4L12 8L20 4M4 4V16L12 20M4 4L12 2L20 4M20 4V16L12 20M12 8V20" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"/>
+            </svg>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xl font-display font-bold tracking-widest text-foreground uppercase">Resid</span>
+            <span className="text-[0.6rem] font-medium tracking-[0.15em] text-muted-foreground">Powered by Elzent Estates</span>
+          </div>
         </div>
-      </div>
 
-      {/* Right — Form */}
-      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 bg-card">
-        <div className="max-w-sm w-full mx-auto">
-          <div className="mb-10">
-            <h1 className="font-display text-3xl font-bold text-foreground">Welkom Terug</h1>
-            <p className="mt-2 text-muted-foreground font-body">Log in op uw exclusieve vastgoedplatform</p>
+        {/* Form */}
+        <div className="mt-12 mb-12 flex-grow flex flex-col justify-center">
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-display font-semibold text-foreground mb-2">Welkom Terug</h1>
+            <p className="text-muted-foreground text-sm md:text-base">Log in op uw exclusieve vastgoedplatform.</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-sm font-body text-muted-foreground mb-1.5">E-mailadres</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">E-mailadres</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
@@ -77,13 +74,13 @@ const LoginPage = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="naam@voorbeeld.nl"
                   required
-                  className="w-full h-11 pl-10 pr-4 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                  className="w-full py-3 pl-10 pr-4 rounded-md border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-body text-muted-foreground mb-1.5">Wachtwoord</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">Wachtwoord</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
@@ -92,20 +89,32 @@ const LoginPage = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full h-11 pl-10 pr-4 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                  className="w-full py-3 pl-10 pr-4 rounded-md border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm font-body">
+            <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 text-muted-foreground cursor-pointer">
-                <input type="checkbox" className="rounded border-input text-primary focus:ring-primary" />
+                <input type="checkbox" className="h-4 w-4 rounded border-input text-primary focus:ring-primary" defaultChecked />
                 Onthoud mij
               </label>
-              <button type="button" className="text-primary hover:underline">Wachtwoord vergeten?</button>
+              <button
+                type="button"
+                className="text-sm font-medium text-primary hover:opacity-80"
+                onClick={() => toast({ title: "Herstelmail verstuurd", description: "Controleer uw inbox." })}
+              >
+                Wachtwoord vergeten?
+              </button>
             </div>
 
-            <Button type="submit" variant="gold" size="lg" className="w-full" disabled={isLoading}>
+            <Button
+              type="submit"
+              variant="gold"
+              size="lg"
+              className="w-full transform hover:scale-[1.02] transition-all duration-200"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -117,20 +126,55 @@ const LoginPage = () => {
             </Button>
           </form>
 
-          <div className="mt-10 p-5 rounded-xl bg-muted/50 border border-border">
-            <p className="text-sm font-body text-muted-foreground mb-1">Nog geen toegang?</p>
-            <p className="text-xs font-body text-muted-foreground mb-3">
-              Resid is uitsluitend toegankelijk op uitnodiging.
+          <div className="mt-8 pt-6 border-t border-border text-center">
+            <p className="text-sm text-muted-foreground mb-1">Nog geen toegang?</p>
+            <p className="text-xs text-muted-foreground/70 mb-3">
+              Resid is uitsluitend toegankelijk op uitnodiging. Uw aanvraag wordt persoonlijk beoordeeld door ons team.
             </p>
-            <Button variant="gold-outline" size="sm" className="gap-2">
+            <button
+              className="inline-flex items-center gap-1.5 font-medium text-primary hover:opacity-80 text-sm"
+              onClick={() => toast({ title: "Aanvraag ontvangen", description: "Wij nemen binnen 48 uur contact op." })}
+            >
               <UserPlus className="h-4 w-4" />
               Toegang Aanvragen
-            </Button>
+            </button>
           </div>
+        </div>
 
-          <p className="mt-8 text-center text-xs text-muted-foreground font-body">
-            © 2026 Resid · <span className="hover:text-primary cursor-pointer">Privacy</span> · <span className="hover:text-primary cursor-pointer">Voorwaarden</span>
-          </p>
+        {/* Footer */}
+        <div className="text-xs text-muted-foreground/60 flex justify-between items-center">
+          <span>&copy; 2026 Resid</span>
+          <div className="flex gap-4">
+            <span className="hover:text-muted-foreground cursor-pointer">Privacy</span>
+            <span className="hover:text-muted-foreground cursor-pointer">Voorwaarden</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right — Hero Image */}
+      <div className="hidden md:block relative w-full flex-grow">
+        <div className="absolute inset-0">
+          <img src={heroImg} alt="Luxury building" className="w-full h-full object-cover" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        <div className="absolute bottom-12 left-12 right-12 text-white max-w-xl">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="px-2 py-1 bg-primary text-white text-xs font-bold uppercase tracking-wider rounded-sm">Exclusief</span>
+            <span className="text-sm font-medium text-gray-200">Kwalitatief vastgoed in topsteden</span>
+          </div>
+          <blockquote className="text-2xl font-display font-light italic leading-relaxed mb-4">
+            "Elk object op ons platform is persoonlijk gecontroleerd en geanalyseerd door onze specialisten."
+          </blockquote>
+          <div className="flex items-center gap-4 text-sm text-gray-300">
+            <div className="flex items-center gap-1">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <span>Gecontroleerd aanbod</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Building2 className="h-4 w-4 text-primary" />
+              <span>Topsteden Nederland</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
