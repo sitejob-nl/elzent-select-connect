@@ -8,7 +8,7 @@ interface SectionCardProps {
 
 const SectionCard = ({ title, label, children, className = "", noPadding = false }: SectionCardProps) => (
   <div className={`bg-card rounded-lg border border-border shadow-sm overflow-hidden ${className}`}>
-    <div className="section-header">
+    <div className="px-6 py-5 border-b border-border bg-muted/50 flex justify-between items-center">
       <h3 className="text-lg font-medium text-foreground font-display">{title}</h3>
       {label && (
         <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>

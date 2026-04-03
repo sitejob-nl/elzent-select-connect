@@ -73,7 +73,7 @@ export function ProfileSkeleton() {
     <div className="space-y-8">
       {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-          <div className="section-header">
+          <div className="px-6 py-5 border-b border-border bg-muted/50 flex justify-between items-center">
             <Skeleton className="h-5 w-32" />
             <Skeleton className="h-3 w-20" />
           </div>
