@@ -26,6 +26,10 @@ qa-setup*.mjs
 # Claude Code local settings (may contain secrets)
 .claude/
 
+# Test artifacts
+test-results/
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
