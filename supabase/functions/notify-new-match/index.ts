@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -10,16 +11,59 @@ interface NotifyPayload {
 }
 
 Deno.serve(async (req: Request) => {
+  const cors = getCorsHeaders(req);
+
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: cors });
+  }
+
   try {
-    const { property_id } = (await req.json()) as NotifyPayload;
-    if (!property_id) {
-      return new Response(JSON.stringify({ error: "property_id is required" }), { status: 400 });
+    // --- Admin authorization check ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: callerProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .is("deleted_at", null)
+      .single();
+
+    if (!callerProfile || callerProfile.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    // --- End authorization check ---
+
+    const { property_id } = (await req.json()) as NotifyPayload;
+    if (!property_id) {
+      return new Response(JSON.stringify({ error: "property_id is required" }), {
+        status: 400,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
 
     // Fetch the published property
-    const { data: property, error: propError } = await supabase
+    const { data: property, error: propError } = await supabaseAdmin
       .from("properties")
       .select("id, title, slug, city, price, property_type, bar_percentage")
       .eq("id", property_id)
@@ -28,40 +72,36 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (propError || !property) {
-      return new Response(JSON.stringify({ error: "Property not found or not published" }), { status: 404 });
+      return new Response(JSON.stringify({ error: "Property not found or not published" }), {
+        status: 404,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
 
     // Fetch all clients with email notifications enabled
-    const { data: clients } = await supabase
+    const { data: clients } = await supabaseAdmin
       .from("client_preferences")
-      .select("profile_id, regions, property_types, budget_min, budget_max, min_bar")
+      .select("profile_id")
       .eq("notify_email", true);
 
     if (!clients || clients.length === 0) {
-      return new Response(JSON.stringify({ message: "No clients with email notifications enabled", sent: 0 }));
+      return new Response(JSON.stringify({ message: "No clients with email notifications enabled", sent: 0 }), {
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
 
-    // Calculate matches and collect emails
+    // Calculate matches using the DB function (single source of truth)
     const notifications: { email: string; name: string; score: number; profileId: string }[] = [];
 
     for (const client of clients) {
-      let score = 0;
-      if (client.regions?.length && property.city && client.regions.includes(property.city)) score += 30;
-      if (client.property_types?.length && property.property_type && client.property_types.includes(property.property_type)) score += 25;
-      if (property.price !== null) {
-        if (client.budget_min !== null && client.budget_max !== null) {
-          if (property.price >= client.budget_min && property.price <= client.budget_max) score += 25;
-        } else if (client.budget_max !== null && property.price <= client.budget_max) {
-          score += 25;
-        } else if (client.budget_min !== null && property.price >= client.budget_min) {
-          score += 25;
-        }
-      }
-      if (client.min_bar !== null && property.bar_percentage !== null && property.bar_percentage >= client.min_bar) score += 20;
+      const { data: score } = await supabaseAdmin.rpc("calculate_match_score", {
+        p_profile_id: client.profile_id,
+        p_property_id: property_id,
+      });
 
-      if (score === 0) continue;
+      if (!score || score === 0) continue;
 
-      const { data: profile } = await supabase
+      const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("id, email, full_name")
         .eq("id", client.profile_id)
@@ -74,7 +114,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (notifications.length === 0) {
-      return new Response(JSON.stringify({ message: "No matching clients found", sent: 0 }));
+      return new Response(JSON.stringify({ message: "No matching clients found", sent: 0 }), {
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
 
     const formatPrice = (p: number | null) => {
@@ -88,7 +130,7 @@ Deno.serve(async (req: Request) => {
 
     for (const n of notifications) {
       // Store in-app notification
-      await supabase.from("notifications").insert({
+      await supabaseAdmin.from("notifications").insert({
         profile_id: n.profileId,
         type: "new_match",
         title: `Nieuw object: ${property.title}`,
@@ -146,11 +188,14 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({
       message: `Notifications sent to ${sentCount} matching clients`,
       sent: sentCount,
-      matches: notifications.map(n => ({ email: n.email, score: n.score })),
     }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+    console.error(err);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
   }
 });
