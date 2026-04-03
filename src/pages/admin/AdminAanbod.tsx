@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, KeyboardEvent } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, Loader2, X } from "lucide-react";
 import { TableSkeleton } from "@/components/Skeletons";
 import { useAdminProperties, useUpsertProperty, useSoftDeleteProperty } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
@@ -12,15 +12,31 @@ const emptyProperty = {
   location: "",
   city: "",
   description: "",
-  price: 0,
+  price: null as number | null,
   property_type: "",
-  units: 0,
-  surface_area: 0,
-  bar_percentage: 0,
+  units: null as number | null,
+  surface_area: null as number | null,
+  bar_percentage: null as number | null,
   status: "draft" as string,
   image_url: "",
   tags: [] as string[],
 };
+
+function toSlug(title: string) {
+  return title
+    .toLowerCase()
+    .replace(/[àáâãäå]/g, "a")
+    .replace(/[èéêë]/g, "e")
+    .replace(/[ìíîï]/g, "i")
+    .replace(/[òóôõö]/g, "o")
+    .replace(/[ùúûü]/g, "u")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+const inputClass = "w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export default function AdminAanbod() {
   const { data: properties, isLoading } = useAdminProperties();
@@ -28,8 +44,11 @@ export default function AdminAanbod() {
   const softDelete = useSoftDeleteProperty();
   const { toast } = useToast();
   const [editing, setEditing] = useState<(typeof emptyProperty & { id?: string }) | null>(null);
-  const [tagsInput, setTagsInput] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
+  const [slugManual, setSlugManual] = useState(false);
+  const tagRef = useRef<HTMLInputElement>(null);
 
   const filtered = (properties ?? []).filter((p) => {
     if (filter === "all") return true;
@@ -38,12 +57,46 @@ export default function AdminAanbod() {
 
   const openNew = () => {
     setEditing({ ...emptyProperty });
-    setTagsInput("");
+    setTags([]);
+    setTagInput("");
+    setSlugManual(false);
   };
 
   const openEdit = (p: typeof emptyProperty & { id: string }) => {
     setEditing({ ...p });
-    setTagsInput((p.tags ?? []).join(", "));
+    setTags(p.tags ?? []);
+    setTagInput("");
+    setSlugManual(true);
+  };
+
+  const addTag = (value: string) => {
+    const tag = value.trim().toLowerCase();
+    if (tag && !tags.includes(tag)) {
+      setTags([...tags, tag]);
+    }
+    setTagInput("");
+  };
+
+  const removeTag = (index: number) => {
+    setTags(tags.filter((_, i) => i !== index));
+  };
+
+  const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addTag(tagInput);
+    } else if (e.key === "Backspace" && !tagInput && tags.length > 0) {
+      removeTag(tags.length - 1);
+    }
+  };
+
+  const updateTitle = (title: string) => {
+    if (!editing) return;
+    const update: typeof editing = { ...editing, title };
+    if (!slugManual) {
+      update.slug = toSlug(title);
+    }
+    setEditing(update);
   };
 
   const handleSave = async () => {
@@ -53,14 +106,14 @@ export default function AdminAanbod() {
       return;
     }
     try {
-      await upsert.mutateAsync({
-        ...editing,
-        tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
-      });
+      await upsert.mutateAsync({ ...editing, tags });
       toast({ title: editing.id ? "Object bijgewerkt" : "Object aangemaakt" });
       setEditing(null);
-    } catch {
-      toast({ title: "Fout bij opslaan", variant: "destructive" });
+    } catch (err: any) {
+      const msg = err?.message?.includes("duplicate key")
+        ? "Er bestaat al een object met deze slug."
+        : err?.message || "Onbekende fout";
+      toast({ title: "Fout bij opslaan", description: msg, variant: "destructive" });
     }
   };
 
@@ -86,13 +139,12 @@ export default function AdminAanbod() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">Titel *</label>
-                <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                <input value={editing.title} onChange={(e) => updateTitle(e.target.value)} className={inputClass} />
               </div>
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">Slug *</label>
-                <input value={editing.slug} onChange={(e) => setEditing({ ...editing, slug: e.target.value })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                <input value={editing.slug} onChange={(e) => { setSlugManual(true); setEditing({ ...editing, slug: e.target.value }); }}
+                  className={inputClass} />
               </div>
             </div>
 
@@ -100,54 +152,59 @@ export default function AdminAanbod() {
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">Locatie *</label>
                 <input value={editing.location} onChange={(e) => setEditing({ ...editing, location: e.target.value })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                  placeholder="Straatnaam 1, Stad" className={inputClass} />
               </div>
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">Stad *</label>
-                <input value={editing.city} onChange={(e) => setEditing({ ...editing, city: e.target.value })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                <input value={editing.city} onChange={(e) => setEditing({ ...editing, city: e.target.value })} className={inputClass} />
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-body text-muted-foreground mb-1">Beschrijving</label>
               <textarea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                rows={4} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40 resize-none" />
+                rows={4} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none" />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">Prijs (EUR)</label>
-                <input type="number" value={editing.price ?? ""} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) || 0 })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                <input type="number" value={editing.price ?? ""} onChange={(e) => setEditing({ ...editing, price: e.target.value ? Number(e.target.value) : null })}
+                  placeholder="0" className={inputClass} />
               </div>
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">BAR %</label>
-                <input type="number" step="0.1" value={editing.bar_percentage ?? ""} onChange={(e) => setEditing({ ...editing, bar_percentage: Number(e.target.value) || 0 })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                <input type="number" step="0.1" value={editing.bar_percentage ?? ""} onChange={(e) => setEditing({ ...editing, bar_percentage: e.target.value ? Number(e.target.value) : null })}
+                  placeholder="0.0" className={inputClass} />
               </div>
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">Eenheden</label>
-                <input type="number" value={editing.units ?? ""} onChange={(e) => setEditing({ ...editing, units: Number(e.target.value) || 0 })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                <input type="number" value={editing.units ?? ""} onChange={(e) => setEditing({ ...editing, units: e.target.value ? Number(e.target.value) : null })}
+                  placeholder="0" className={inputClass} />
               </div>
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">Opp. (m2)</label>
-                <input type="number" value={editing.surface_area ?? ""} onChange={(e) => setEditing({ ...editing, surface_area: Number(e.target.value) || 0 })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                <input type="number" value={editing.surface_area ?? ""} onChange={(e) => setEditing({ ...editing, surface_area: e.target.value ? Number(e.target.value) : null })}
+                  placeholder="0" className={inputClass} />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">Type vastgoed</label>
-                <input value={editing.property_type ?? ""} onChange={(e) => setEditing({ ...editing, property_type: e.target.value })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                <select value={editing.property_type ?? ""} onChange={(e) => setEditing({ ...editing, property_type: e.target.value })}
+                  className={inputClass}>
+                  <option value="">— Selecteer —</option>
+                  <option value="woning">Woning</option>
+                  <option value="appartement">Appartement</option>
+                  <option value="commercieel">Commercieel</option>
+                  <option value="gemengd">Gemengd</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-body text-muted-foreground mb-1">Status</label>
                 <select value={editing.status} onChange={(e) => setEditing({ ...editing, status: e.target.value })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40">
+                  className={inputClass}>
                   <option value="draft">Concept</option>
                   <option value="published">Gepubliceerd</option>
                   <option value="archived">Gearchiveerd</option>
@@ -158,14 +215,34 @@ export default function AdminAanbod() {
             <div>
               <label className="block text-sm font-body text-muted-foreground mb-1">Afbeelding URL</label>
               <input value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+                placeholder="https://..." className={inputClass} />
             </div>
 
+            {/* Tags input met chips */}
             <div>
-              <label className="block text-sm font-body text-muted-foreground mb-1">Tags (komma-gescheiden)</label>
-              <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)}
-                placeholder="transformatie, appartementen, centrum"
-                className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:ring-2 focus:ring-primary/40" />
+              <label className="block text-sm font-body text-muted-foreground mb-1">Kenmerken</label>
+              <div className="flex flex-wrap gap-2 p-2 rounded-lg border border-input bg-background min-h-[42px] focus-within:ring-2 focus-within:ring-primary/40"
+                onClick={() => tagRef.current?.focus()}>
+                {tags.map((tag, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-body font-medium">
+                    {tag}
+                    <button type="button" onClick={(e) => { e.stopPropagation(); removeTag(i); }}
+                      className="hover:text-red-500 transition-colors">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  ref={tagRef}
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagKeyDown}
+                  onBlur={() => { if (tagInput.trim()) addTag(tagInput); }}
+                  placeholder={tags.length === 0 ? "Typ en druk Enter om toe te voegen..." : ""}
+                  className="flex-1 min-w-[120px] h-7 bg-transparent text-foreground font-body text-sm outline-none"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground font-body mt-1">Druk op Enter of komma om een kenmerk toe te voegen</p>
             </div>
 
             <div className="flex gap-3 pt-2">
