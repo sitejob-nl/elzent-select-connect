@@ -1,27 +1,69 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Check, ArrowLeft, MessageSquare } from "lucide-react";
-import bastionImg from "@/assets/property-bastion.jpg";
+import { Sparkles, Check, ArrowLeft, MessageSquare, Heart, Eye, Loader2 } from "lucide-react";
+import { useProperty } from "@/hooks/useProperties";
+import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
+import { useSubmitInterest, useInterestRequests } from "@/hooks/useInterest";
+import { useToast } from "@/hooks/use-toast";
 
-const financials = [
-  { label: "Aankoopprijs pand", value: "€ 1.250.000" },
-  { label: "Verbouwkosten (incl. onvoorzien)", value: "€ 720.000" },
-  { label: "Kosten koper / bijkomend", value: "€ 130.000" },
-  { label: "Totale investering", value: "€ 2.100.000", bold: true },
-  { label: "Bruto huurinkomsten (jaar)", value: "€ 151.200" },
-  { label: "Exploitatiekosten", value: "€ 22.700" },
-  { label: "Netto huurinkomsten (jaar)", value: "€ 128.500", bold: true },
-  { label: "BAR", value: "7.2%", bold: true },
-];
-
-const timeline = [
-  { title: "Interesse tonen", sub: "Nu mogelijk", desc: "Ontvang het volledige informatiepakket.", active: true },
-  { title: "Bezichtiging & Due Diligence", sub: "Maart – April 2026", desc: "Persoonlijke bezichtiging, financiering en taxatie.", active: false },
-  { title: "Voorstel & Afname", sub: "Deadline 15 mei · Afname 31 juli 2026", desc: "Niet-bindend voorstel indienen, gevolgd door eigendomsoverdracht.", active: false },
-];
+const formatPrice = (price: number | null) => {
+  if (!price) return "–";
+  if (price >= 1_000_000) return `€ ${(price / 1_000_000).toFixed(1)}M`;
+  if (price >= 1_000) return `€ ${Math.round(price / 1_000)}K`;
+  return `€ ${price}`;
+};
 
 const DetailPage = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const { data: property, isLoading } = useProperty(slug);
+  const { data: favorites } = useFavorites();
+  const toggleFavorite = useToggleFavorite();
+  const submitInterest = useSubmitInterest();
+  const { data: interests } = useInterestRequests();
+  const { toast } = useToast();
+  const [interestMessage, setInterestMessage] = useState("");
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!property) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto px-4 py-20 text-center">
+          <p className="text-muted-foreground font-body">Object niet gevonden.</p>
+          <Link to="/aanbod" className="text-primary hover:underline font-body mt-4 inline-block">
+            Terug naar aanbod
+          </Link>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const isFav = favorites?.has(property.id) ?? false;
+  const hasInterest = interests?.some((i) => i.property_id === property.id) ?? false;
+
+  const handleInterest = async () => {
+    try {
+      await submitInterest.mutateAsync({
+        propertyId: property.id,
+        message: interestMessage || undefined,
+      });
+      toast({ title: "Interesse gemeld", description: "Wij nemen spoedig contact met u op." });
+      setInterestMessage("");
+    } catch {
+      toast({ title: "Fout", description: "Kon interesse niet melden. Probeer opnieuw.", variant: "destructive" });
+    }
+  };
+
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-6">
@@ -29,34 +71,41 @@ const DetailPage = () => {
         <div className="flex items-center gap-2 text-sm text-muted-foreground font-body mb-6">
           <Link to="/aanbod" className="hover:text-primary transition-colors">Aanbod</Link>
           <span>/</span>
-          <span className="text-foreground">Bastion 1</span>
+          <span className="text-foreground">{property.title}</span>
         </div>
 
         {/* Hero */}
         <div className="rounded-2xl overflow-hidden relative h-64 md:h-96 mb-8">
-          <img src={bastionImg} alt="Bastion 1" className="w-full h-full object-cover" width={1280} height={768} />
+          {property.image_url && (
+            <img src={property.image_url} alt={property.title} className="w-full h-full object-cover" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-secondary/80 to-transparent" />
           <div className="absolute bottom-6 left-6 right-6">
             <div className="flex gap-2 mb-3">
-              <span className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-xs font-body font-semibold">Nieuw</span>
-              <span className="px-2.5 py-1 rounded-full bg-card/80 backdrop-blur text-foreground text-xs font-body">97% Match</span>
-              <span className="px-2.5 py-1 rounded-full bg-card/80 backdrop-blur text-foreground text-xs font-body">Transformatie</span>
+              {property.match_score > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-card/80 backdrop-blur text-foreground text-xs font-body">{property.match_score}% Match</span>
+              )}
+              {property.property_type && (
+                <span className="px-2.5 py-1 rounded-full bg-card/80 backdrop-blur text-foreground text-xs font-body">{property.property_type}</span>
+              )}
             </div>
-            <h1 className="font-display text-2xl md:text-3xl font-bold text-primary-foreground">Bastion 1 – Transformatie</h1>
-            <p className="text-primary-foreground/70 font-body mt-1">'s-Hertogenbosch · Kantoor → 24 appartementen</p>
+            <h1 className="font-display text-2xl md:text-3xl font-bold text-primary-foreground">{property.title}</h1>
+            <p className="text-primary-foreground/70 font-body mt-1">{property.location}</p>
           </div>
         </div>
 
         {/* Match Banner */}
-        <div className="rounded-xl bg-gold-light border border-primary/20 p-4 flex items-start gap-3 mb-8">
-          <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-          <div>
-            <p className="font-body font-semibold text-foreground text-sm">Waarom deze match?</p>
-            <p className="font-body text-muted-foreground text-sm">
-              Regio, budget (€500k–€2.5m) en transformatieprojecten passen bij uw profiel.
-            </p>
+        {property.match_score > 0 && (
+          <div className="rounded-xl bg-gold-light border border-primary/20 p-4 flex items-start gap-3 mb-8">
+            <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+            <div>
+              <p className="font-body font-semibold text-foreground text-sm">Waarom deze match?</p>
+              <p className="font-body text-muted-foreground text-sm">
+                Dit object scoort {property.match_score}% op basis van uw investeringsprofiel.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main content */}
@@ -64,10 +113,10 @@ const DetailPage = () => {
             {/* Key stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: "Investering", value: "€ 2.1M" },
-                { label: "BAR", value: "7.2%" },
-                { label: "Huurinkomsten", value: "€ 151K/jr" },
-                { label: "Eenheden", value: "24" },
+                { label: "Investering", value: formatPrice(property.price) },
+                { label: "BAR", value: property.bar_percentage ? `${property.bar_percentage}%` : "–" },
+                { label: "Oppervlakte", value: property.surface_area ? `${property.surface_area} m²` : "–" },
+                { label: "Eenheden", value: property.units?.toString() ?? "–" },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl bg-card border border-border p-4 text-center">
                   <p className="text-xs text-muted-foreground font-body">{s.label}</p>
@@ -77,53 +126,53 @@ const DetailPage = () => {
             </div>
 
             {/* Description */}
-            <div>
-              <h2 className="text-lg font-display font-semibold text-foreground mb-3">Project Beschrijving</h2>
-              <p className="font-body text-muted-foreground leading-relaxed text-sm">
-                Bastion 1 betreft de transformatie van een voormalig kantoorpand (BJ 1992) in het historische centrum van 's-Hertogenbosch naar 24 moderne huurappartementen, op loopafstand van het centraal station.
-              </p>
-              <p className="font-body text-muted-foreground leading-relaxed text-sm mt-3">
-                18 tweekamerappartementen (45-55 m²) en 6 driekamerappartementen (65-75 m²), allen energielabel A. Bouwvergunning verleend, oplevering Q3 2026. Verwachte huurprijs € 950 – € 1.350/maand per eenheid.
-              </p>
-            </div>
+            {property.description && (
+              <div>
+                <h2 className="text-lg font-display font-semibold text-foreground mb-3">Project Beschrijving</h2>
+                <p className="font-body text-muted-foreground leading-relaxed text-sm whitespace-pre-line">
+                  {property.description}
+                </p>
+              </div>
+            )}
 
             {/* Timeline */}
-            <div>
-              <h2 className="text-lg font-display font-semibold text-foreground mb-4">Tijdlijn & Proces</h2>
-              <div className="space-y-0">
-                {timeline.map((t, i) => (
-                  <div key={i} className="relative pl-8 pb-6 last:pb-0">
-                    {i < timeline.length - 1 && (
-                      <div className="absolute left-[0.45rem] top-6 bottom-0 w-0.5 bg-border" />
-                    )}
-                    <div className={`absolute left-0 top-1 h-4 w-4 rounded-full border-2 ${
-                      t.active ? "border-primary bg-primary" : "border-border bg-card"
-                    }`} />
-                    <h3 className="font-body font-semibold text-foreground text-sm">{t.title}</h3>
-                    <p className="text-xs text-primary font-body">{t.sub}</p>
-                    <p className="text-sm text-muted-foreground font-body mt-1">{t.desc}</p>
-                  </div>
-                ))}
+            {property.timeline.length > 0 && (
+              <div>
+                <h2 className="text-lg font-display font-semibold text-foreground mb-4">Tijdlijn & Proces</h2>
+                <div className="space-y-0">
+                  {property.timeline.map((t, i) => (
+                    <div key={t.id} className="relative pl-8 pb-6 last:pb-0">
+                      {i < property.timeline.length - 1 && (
+                        <div className="absolute left-[0.45rem] top-6 bottom-0 w-0.5 bg-border" />
+                      )}
+                      <div className={`absolute left-0 top-1 h-4 w-4 rounded-full border-2 ${
+                        t.is_active ? "border-primary bg-primary" : "border-border bg-card"
+                      }`} />
+                      <h3 className="font-body font-semibold text-foreground text-sm">{t.step_title}</h3>
+                      {t.step_date && (
+                        <p className="text-xs text-primary font-body">
+                          {new Date(t.step_date).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}
+                        </p>
+                      )}
+                      {t.step_description && (
+                        <p className="text-sm text-muted-foreground font-body mt-1">{t.step_description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Financials */}
-            <div>
-              <h2 className="text-lg font-display font-semibold text-foreground mb-4">Financieel Overzicht</h2>
-              <div className="rounded-xl border border-border overflow-hidden">
-                {financials.map((f, i) => (
-                  <div
-                    key={i}
-                    className={`flex justify-between px-5 py-3 font-body text-sm ${
-                      i % 2 === 0 ? "bg-card" : "bg-muted/30"
-                    } ${f.bold ? "font-bold text-foreground" : "text-muted-foreground"}`}
-                  >
-                    <span>{f.label}</span>
-                    <span className={f.bold ? "text-primary" : ""}>{f.value}</span>
-                  </div>
+            {/* Tags */}
+            {property.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {property.tags.map((tag) => (
+                  <span key={tag} className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-body">
+                    {tag}
+                  </span>
                 ))}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -141,22 +190,57 @@ const DetailPage = () => {
                   </li>
                 ))}
               </ul>
-              <Button variant="gold" size="lg" className="w-full">
-                Interesse Tonen →
-              </Button>
+
+              {hasInterest ? (
+                <div className="rounded-lg bg-gold-light border border-primary/20 p-3 text-center">
+                  <p className="font-body text-sm font-semibold text-foreground">Interesse gemeld</p>
+                  <p className="font-body text-xs text-muted-foreground">Wij nemen contact met u op.</p>
+                </div>
+              ) : (
+                <>
+                  <textarea
+                    value={interestMessage}
+                    onChange={(e) => setInterestMessage(e.target.value)}
+                    placeholder="Optioneel: voeg een bericht toe..."
+                    rows={3}
+                    className="w-full mb-3 px-3 py-2 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-none"
+                  />
+                  <Button
+                    variant="gold"
+                    size="lg"
+                    className="w-full"
+                    onClick={handleInterest}
+                    disabled={submitInterest.isPending}
+                  >
+                    {submitInterest.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Interesse Tonen →
+                  </Button>
+                </>
+              )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="font-body font-semibold text-foreground text-sm mb-3">Status</h3>
-              <div className="space-y-2 text-sm font-body">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Interesse fase</span>
-                  <span className="text-primary font-semibold">Huidige fase</span>
-                </div>
-                <p className="text-muted-foreground">4 investeerders geïnteresseerd</p>
-                <p className="text-muted-foreground">Afname: 31 juli 2026</p>
-              </div>
+            {/* Actions */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => toggleFavorite.mutate({ propertyId: property.id, isFavorite: isFav })}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-body transition-colors ${
+                  isFav ? "border-red-400 text-red-400 bg-red-50" : "border-border text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                <Heart className={`h-4 w-4 ${isFav ? "fill-red-400" : ""}`} />
+                {isFav ? "Opgeslagen" : "Opslaan"}
+              </button>
             </div>
+
+            {/* View count (schaarste-indicator) */}
+            {property.view_count > 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground font-body">
+                <Eye className="h-4 w-4" />
+                Dit object is {property.view_count} keer bekeken
+              </div>
+            )}
 
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="font-body font-semibold text-foreground text-sm mb-3">Vragen?</h3>

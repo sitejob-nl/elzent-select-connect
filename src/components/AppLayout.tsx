@@ -1,22 +1,34 @@
-import { Link, useLocation } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Bell, LogOut, LayoutDashboard, Building2, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
-  { label: "Dashboard", path: "/dashboard" },
-  { label: "Aanbod", path: "/aanbod" },
-  { label: "Mijn Profiel", path: "/profiel" },
+  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { label: "Aanbod", path: "/aanbod", icon: Building2 },
+  { label: "Mijn Profiel", path: "/profiel", icon: User },
 ];
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
+
+  const initials = profile?.full_name
+    ? profile.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "??";
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/", { replace: true });
+  };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-16 md:pb-0">
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <span className="font-display text-xl font-bold text-primary">Elzent</span>
-            <span className="text-xs font-body tracking-widest text-muted-foreground uppercase">Select</span>
+            <span className="font-display text-xl font-bold text-primary">Resid</span>
+            <span className="hidden sm:inline text-[10px] font-body tracking-wider text-muted-foreground/60 ml-1">powered by Elzent Estates</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
@@ -41,13 +53,41 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
             </button>
             <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
-              <span className="text-xs font-bold text-secondary-foreground">JD</span>
+              <span className="text-xs font-bold text-secondary-foreground">{initials}</span>
             </div>
+            <button
+              onClick={handleSignOut}
+              className="p-2 rounded-full hover:bg-muted transition-colors"
+              title="Uitloggen"
+            >
+              <LogOut className="h-4 w-4 text-muted-foreground" />
+            </button>
           </div>
         </div>
       </header>
 
       <main>{children}</main>
+
+      {/* Mobile bottom navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-md md:hidden">
+        <div className="flex items-center justify-around h-16">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${
+                  isActive ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                <span className="text-[10px] font-body font-medium">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 };

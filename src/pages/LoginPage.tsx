@@ -1,17 +1,45 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mail, Lock, UserPlus } from "lucide-react";
+import { Mail, Lock, UserPlus, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import heroImg from "@/assets/hero-building.jpg";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { signIn, session, profile, isAdmin, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Redirect if already logged in — wait for profile to be loaded so isAdmin is accurate
+  useEffect(() => {
+    if (session && !authLoading && profile) {
+      navigate(isAdmin ? "/admin" : "/dashboard", { replace: true });
+    }
+  }, [session, authLoading, profile, isAdmin, navigate]);
+
+  if (session && !authLoading && profile) return null;
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/dashboard");
+    setIsLoading(true);
+
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      toast({
+        title: "Inloggen mislukt",
+        description: "Controleer uw e-mailadres en wachtwoord.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Navigation happens via auth state change + redirect above
   };
 
   return (
@@ -35,7 +63,7 @@ const LoginPage = () => {
         <div className="max-w-sm w-full mx-auto">
           <div className="mb-10">
             <h1 className="font-display text-3xl font-bold text-foreground">Welkom Terug</h1>
-            <p className="mt-2 text-muted-foreground font-body">Log in op uw exclusieve vastgoedplatform.</p>
+            <p className="mt-2 text-muted-foreground font-body">Log in op uw exclusieve vastgoedplatform</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -47,7 +75,8 @@ const LoginPage = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="naam@elzent.nl"
+                  placeholder="naam@voorbeeld.nl"
+                  required
                   className="w-full h-11 pl-10 pr-4 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                 />
               </div>
@@ -62,6 +91,7 @@ const LoginPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  required
                   className="w-full h-11 pl-10 pr-4 rounded-lg border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                 />
               </div>
@@ -75,15 +105,22 @@ const LoginPage = () => {
               <button type="button" className="text-primary hover:underline">Wachtwoord vergeten?</button>
             </div>
 
-            <Button type="submit" variant="gold" size="lg" className="w-full">
-              Inloggen
+            <Button type="submit" variant="gold" size="lg" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Bezig...
+                </>
+              ) : (
+                "Inloggen"
+              )}
             </Button>
           </form>
 
           <div className="mt-10 p-5 rounded-xl bg-muted/50 border border-border">
             <p className="text-sm font-body text-muted-foreground mb-1">Nog geen toegang?</p>
             <p className="text-xs font-body text-muted-foreground mb-3">
-              Elzent Select is uitsluitend toegankelijk op uitnodiging.
+              Resid is uitsluitend toegankelijk op uitnodiging.
             </p>
             <Button variant="gold-outline" size="sm" className="gap-2">
               <UserPlus className="h-4 w-4" />
@@ -92,7 +129,7 @@ const LoginPage = () => {
           </div>
 
           <p className="mt-8 text-center text-xs text-muted-foreground font-body">
-            © 2025 Elzent Select · <span className="hover:text-primary cursor-pointer">Privacy</span> · <span className="hover:text-primary cursor-pointer">Voorwaarden</span>
+            © 2026 Resid · <span className="hover:text-primary cursor-pointer">Privacy</span> · <span className="hover:text-primary cursor-pointer">Voorwaarden</span>
           </p>
         </div>
       </div>
