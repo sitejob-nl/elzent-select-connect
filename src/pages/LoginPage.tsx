@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mail, Lock, UserPlus, Loader2, ShieldCheck, Building2 } from "lucide-react";
+import { Mail, Lock, UserPlus, Loader2, ShieldCheck, Building2, ArrowLeft, User, Briefcase, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSubmitAccessRequest } from "@/hooks/useAccessRequest";
 import heroImg from "@/assets/hero-building.jpg";
 
 const LoginPage = () => {
@@ -13,6 +14,12 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showAccessForm, setShowAccessForm] = useState(false);
+  const [accessName, setAccessName] = useState("");
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessCompany, setAccessCompany] = useState("");
+  const [accessMessage, setAccessMessage] = useState("");
+  const submitAccess = useSubmitAccessRequest();
 
   useEffect(() => {
     if (session && !authLoading && profile) {
@@ -36,6 +43,26 @@ const LoginPage = () => {
       });
       setIsLoading(false);
       return;
+    }
+  };
+
+  const handleAccessRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await submitAccess.mutateAsync({
+        name: accessName,
+        email: accessEmail,
+        company: accessCompany || undefined,
+        message: accessMessage || undefined,
+      });
+      toast({ title: "Aanvraag ontvangen", description: "Wij nemen binnen 48 uur contact met u op." });
+      setShowAccessForm(false);
+      setAccessName("");
+      setAccessEmail("");
+      setAccessCompany("");
+      setAccessMessage("");
+    } catch (err: any) {
+      toast({ title: "Fout", description: err?.message || "Kon aanvraag niet versturen.", variant: "destructive" });
     }
   };
 
@@ -126,19 +153,101 @@ const LoginPage = () => {
             </Button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-border text-center">
-            <p className="text-sm text-muted-foreground mb-1">Nog geen toegang?</p>
-            <p className="text-xs text-muted-foreground/70 mb-3">
-              Resid is uitsluitend toegankelijk op uitnodiging. Uw aanvraag wordt persoonlijk beoordeeld door ons team.
-            </p>
-            <button
-              className="inline-flex items-center gap-1.5 font-medium text-primary hover:opacity-80 text-sm"
-              onClick={() => toast({ title: "Aanvraag ontvangen", description: "Wij nemen binnen 48 uur contact op." })}
-            >
-              <UserPlus className="h-4 w-4" />
-              Toegang Aanvragen
-            </button>
-          </div>
+          {!showAccessForm ? (
+            <div className="mt-8 pt-6 border-t border-border text-center">
+              <p className="text-sm text-muted-foreground mb-1">Nog geen toegang?</p>
+              <p className="text-xs text-muted-foreground/70 mb-3">
+                Resid is uitsluitend toegankelijk op uitnodiging. Uw aanvraag wordt persoonlijk beoordeeld door ons team.
+              </p>
+              <button
+                className="inline-flex items-center gap-1.5 font-medium text-primary hover:opacity-80 text-sm"
+                onClick={() => setShowAccessForm(true)}
+              >
+                <UserPlus className="h-4 w-4" />
+                Toegang Aanvragen
+              </button>
+            </div>
+          ) : (
+            <div className="mt-8 pt-6 border-t border-border">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-lg font-semibold text-foreground">Toegang Aanvragen</h2>
+                <button onClick={() => setShowAccessForm(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Vul uw gegevens in. Wij beoordelen uw aanvraag persoonlijk en nemen binnen 48 uur contact op.
+              </p>
+              <form onSubmit={handleAccessRequest} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Naam *</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={accessName}
+                      onChange={(e) => setAccessName(e.target.value)}
+                      placeholder="Uw volledige naam"
+                      required
+                      className="w-full py-2.5 pl-10 pr-4 rounded-md border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">E-mailadres *</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="email"
+                      value={accessEmail}
+                      onChange={(e) => setAccessEmail(e.target.value)}
+                      placeholder="naam@voorbeeld.nl"
+                      required
+                      className="w-full py-2.5 pl-10 pr-4 rounded-md border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Bedrijf</label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={accessCompany}
+                      onChange={(e) => setAccessCompany(e.target.value)}
+                      placeholder="Optioneel"
+                      className="w-full py-2.5 pl-10 pr-4 rounded-md border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Bericht</label>
+                  <div className="relative">
+                    <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <textarea
+                      value={accessMessage}
+                      onChange={(e) => setAccessMessage(e.target.value)}
+                      placeholder="Waarom bent u geïnteresseerd?"
+                      rows={3}
+                      className="w-full py-2.5 pl-10 pr-4 rounded-md border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all resize-none"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  variant="gold"
+                  className="w-full"
+                  disabled={submitAccess.isPending}
+                >
+                  {submitAccess.isPending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Bezig...</>
+                  ) : (
+                    "Aanvraag Versturen"
+                  )}
+                </Button>
+              </form>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

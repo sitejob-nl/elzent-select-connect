@@ -23,6 +23,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
 
+  const initials = profile?.full_name
+    ? profile.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "??";
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/", { replace: true });
@@ -31,25 +35,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar — desktop */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-card">
-        <div className="h-16 flex items-center px-6 border-b border-border">
+      <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-secondary text-secondary-foreground">
+        <div className="h-16 flex items-center px-6 border-b border-white/10">
           <Link to="/admin" className="flex items-center gap-2">
-            <span className="font-display text-xl font-bold text-primary">Resid</span>
-            <span className="text-[10px] font-body tracking-wider text-muted-foreground/60">Admin</span>
+            <div className="text-primary">
+              <svg fill="none" height="24" viewBox="0 0 24 24" width="24">
+                <path d="M4 4L12 8L20 4M4 4V16L12 20M4 4L12 2L20 4M20 4V16L12 20M12 8V20" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"/>
+              </svg>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-display text-lg font-bold text-white tracking-wider uppercase">Resid</span>
+              <span className="text-[0.55rem] font-medium tracking-[0.12em] text-gray-400">Admin Panel</span>
+            </div>
           </Link>
         </div>
 
-        <nav className="flex-1 py-4 px-3 space-y-1">
+        <nav className="flex-1 py-6 px-3 space-y-1">
           {sidebarItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-body transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-body transition-all ${
                   isActive
-                    ? "bg-primary/10 text-primary font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    ? "bg-primary/15 text-primary font-semibold"
+                    : "text-gray-400 hover:text-white hover:bg-white/5"
                 }`}
               >
                 <item.icon className="h-4 w-4" />
@@ -60,21 +71,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-white/10">
           <div className="flex items-center gap-3 mb-3">
-            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center">
-              <span className="text-xs font-bold text-secondary-foreground">
-                {profile?.full_name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() ?? "??"}
-              </span>
+            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+              <span className="text-xs font-bold text-white font-display">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-body font-semibold text-foreground truncate">{profile?.full_name ?? "Admin"}</p>
-              <p className="text-xs font-body text-muted-foreground truncate">{profile?.email}</p>
+              <p className="text-sm font-body font-semibold text-white truncate">{profile?.full_name ?? "Admin"}</p>
+              <p className="text-xs font-body text-gray-400 truncate">{profile?.email}</p>
             </div>
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-body transition-colors w-full"
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white font-body transition-colors w-full"
           >
             <LogOut className="h-4 w-4" />
             Uitloggen
@@ -82,15 +91,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Mobile header */}
+      {/* Mobile header + content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="lg:hidden sticky top-0 z-40 h-14 border-b border-border bg-card/80 backdrop-blur-md flex items-center justify-between px-4">
-          <Link to="/admin" className="font-display text-lg font-bold text-primary">Resid Admin</Link>
+        <header className="lg:hidden sticky top-0 z-40 h-14 border-b border-border bg-secondary backdrop-blur-md flex items-center justify-between px-4">
+          <Link to="/admin" className="flex items-center gap-2">
+            <span className="font-display text-lg font-bold text-primary">Resid</span>
+            <span className="text-[0.55rem] tracking-[0.12em] text-gray-400 uppercase">Admin</span>
+          </Link>
           <button
             onClick={handleSignOut}
-            className="p-2 rounded-full hover:bg-muted transition-colors"
+            className="p-2 rounded-full hover:bg-white/10 transition-colors"
           >
-            <LogOut className="h-4 w-4 text-muted-foreground" />
+            <LogOut className="h-4 w-4 text-gray-400" />
           </button>
         </header>
 
