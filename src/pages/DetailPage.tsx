@@ -4,10 +4,11 @@ import AppLayout from "@/components/AppLayout";
 import SectionCard from "@/components/SectionCard";
 import { Button } from "@/components/ui/button";
 import {
-  Sparkles, Check, ArrowLeft, Heart, Eye,
+  Sparkles, Check, ArrowLeft, Heart,
   Loader2, FileText, Sheet, Image as ImageIcon, Lock, ChevronRight, MessageSquare,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import PropertyPhotoGallery from "@/components/PropertyPhotoGallery";
 import { useProperty } from "@/hooks/useProperties";
 import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 import { useSubmitInterest, useInterestRequests } from "@/hooks/useInterest";
@@ -94,54 +95,16 @@ const DetailPage = () => {
         </div>
 
         {/* Hero */}
-        {(() => {
-          const heroSrc = property.image_url || property.images[0]?.url || null;
-          const thumbs = property.images.slice(0, 4);
-          const extra = Math.max(0, property.images.length - 4);
-          return (
-            <div className="relative rounded-xl overflow-hidden mb-8 h-64 sm:h-80 lg:h-96">
-              {heroSrc && (
-                <img src={heroSrc} alt={property.title} className="w-full h-full object-cover" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              <div className="absolute bottom-6 left-6 right-6">
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  {isNew && (
-                    <span className="px-2 py-1 bg-primary text-white text-xs font-bold uppercase tracking-wider rounded-sm">Nieuw</span>
-                  )}
-                  {property.match_score > 0 && (
-                    <span className="px-2 py-1 bg-white/20 text-white text-xs font-medium rounded-sm backdrop-blur-sm">{property.match_score}% Match</span>
-                  )}
-                  {property.property_type && (
-                    <span className="px-2 py-1 bg-primary/80 text-white text-xs font-medium rounded-sm backdrop-blur-sm">{propertyTypeLabel(property.property_type)}</span>
-                  )}
-                  {property.view_count > 0 && (
-                    <span className="px-2 py-1 bg-white/10 text-white text-xs font-medium rounded-sm backdrop-blur-sm flex items-center gap-1">
-                      <Eye className="h-3 w-3" />{property.view_count} keer bekeken
-                    </span>
-                  )}
-                </div>
-                <h1 className="text-3xl sm:text-4xl font-display font-bold text-white mb-1">{property.title}</h1>
-                <p className="text-gray-200">{property.location}</p>
-              </div>
-              {/* Thumbnail strip */}
-              {property.images.length > 1 && (
-                <div className="absolute top-4 right-4 flex gap-2">
-                  {thumbs.map((img) => (
-                    <div key={img.id} className="w-14 h-14 rounded-lg overflow-hidden border-2 border-white/40">
-                      <img src={img.url} alt={img.alt_text ?? ""} className="w-full h-full object-cover" />
-                    </div>
-                  ))}
-                  {extra > 0 && (
-                    <div className="w-14 h-14 rounded-lg bg-black/50 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center text-white text-xs font-bold">
-                      +{extra}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        <PropertyPhotoGallery
+          images={property.images}
+          fallbackImageUrl={property.image_url}
+          title={property.title}
+          location={property.location}
+          isNew={isNew}
+          matchScore={property.match_score}
+          propertyType={property.property_type}
+          viewCount={property.view_count}
+        />
 
         {/* Match Banner */}
         {property.match_score > 0 && (
