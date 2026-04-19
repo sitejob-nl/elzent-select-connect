@@ -20,22 +20,45 @@ import { useUploadPropertyImage } from "@/hooks/usePropertyImages";
 import { useToast } from "@/hooks/use-toast";
 import { PROPERTY_TYPES, propertyTypeLabel } from "@/lib/taxonomy";
 import PropertyImageManager, { type QueuedImage } from "@/components/PropertyImageManager";
-import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
-const emptyProperty = {
+// Use the generated Supabase row type as the source of truth. The
+// editor form holds a subset of these columns (everything we let the
+// admin touch); nullability matches the schema so no `as any` is
+// needed when a list row is piped into openEdit.
+type PropertyRow = Database["public"]["Tables"]["properties"]["Row"];
+
+type PropertyDraft = {
+  id?: string;
+  slug: string;
+  title: string;
+  location: string;
+  city: string;
+  description: string | null;
+  price: number | null;
+  property_type: string | null;
+  units: number | null;
+  surface_area: number | null;
+  bar_percentage: number | null;
+  status: string;
+  image_url: string | null;
+  tags: string[];
+};
+
+const emptyProperty: PropertyDraft = {
   slug: "",
   title: "",
   location: "",
   city: "",
   description: "",
-  price: null as number | null,
+  price: null,
   property_type: "",
-  units: null as number | null,
-  surface_area: null as number | null,
-  bar_percentage: null as number | null,
-  status: "draft" as string,
+  units: null,
+  surface_area: null,
+  bar_percentage: null,
+  status: "draft",
   image_url: "",
-  tags: [] as string[],
+  tags: [],
 };
 
 function toSlug(title: string) {
@@ -60,7 +83,7 @@ export default function AdminAanbod() {
   const softDelete = useSoftDeleteProperty();
   const uploadImage = useUploadPropertyImage();
   const { toast } = useToast();
-  const [editing, setEditing] = useState<(typeof emptyProperty & { id?: string }) | null>(null);
+  const [editing, setEditing] = useState<PropertyDraft | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
@@ -88,8 +111,27 @@ export default function AdminAanbod() {
     setQueuedImages([]);
   };
 
-  const openEdit = (p: typeof emptyProperty & { id: string }) => {
-    setEditing({ ...p });
+  const openEdit = (p: PropertyRow) => {
+    // Narrow the full DB row down to the editor draft shape; we
+    // intentionally drop audit columns (created_at/updated_at,
+    // deleted_at, created_by, contact_profile_id) that the form
+    // does not touch, so they round-trip untouched on save.
+    setEditing({
+      id: p.id,
+      slug: p.slug,
+      title: p.title,
+      location: p.location,
+      city: p.city,
+      description: p.description,
+      price: p.price,
+      property_type: p.property_type,
+      units: p.units,
+      surface_area: p.surface_area,
+      bar_percentage: p.bar_percentage,
+      status: p.status,
+      image_url: p.image_url,
+      tags: p.tags,
+    });
     setTags(p.tags ?? []);
     setTagInput("");
     setSlugManual(true);
@@ -127,7 +169,7 @@ export default function AdminAanbod() {
 
   const updateTitle = (title: string) => {
     if (!editing) return;
-    const update: typeof editing = { ...editing, title };
+    const update: PropertyDraft = { ...editing, title };
     if (!slugManual) {
       update.slug = toSlug(title);
     }
@@ -160,28 +202,20 @@ export default function AdminAanbod() {
     }
     try {
       const isNew = !editing.id;
-      await upsert.mutateAsync({ ...editing, tags });
+      // useUpsertProperty returns the row id on both the insert and
+      // update paths — use it directly to flush queued images so we
+      // don't race a slug-lookup against a concurrent slug edit.
+      const { id: savedId } = await upsert.mutateAsync({ ...editing, tags });
 
       // For new properties we queue images client-side until the
       // property row exists. Flush them now that it does.
       if (isNew && queuedImages.length > 0) {
-        // Look up the id of the just-inserted property. upsert doesn't
-        // return it, so we re-query by the unique slug.
-        const { data: fresh, error: lookupError } = await supabase
-          .from("properties")
-          .select("id")
-          .eq("slug", editing.slug)
-          .single();
-        if (lookupError || !fresh?.id) {
-          throw new Error(lookupError?.message ?? "Kon nieuw object niet terugvinden om afbeeldingen te koppelen.");
-        }
-        const newId = fresh.id;
         let heroClaimed = false;
         for (let i = 0; i < queuedImages.length; i++) {
           const q = queuedImages[i];
           try {
             await uploadImage.mutateAsync({
-              propertyId: newId,
+              propertyId: savedId,
               file: q.file,
               isHero: q.isHero && !heroClaimed,
               sortOrder: i,
@@ -433,7 +467,7 @@ export default function AdminAanbod() {
                   {p.status === "published" ? "Live" : p.status === "draft" ? "Concept" : "Archief"}
                 </span>
                 <div className="flex gap-1">
-                  <button onClick={() => openEdit(p as any)} className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Bewerken">
+                  <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Bewerken">
                     <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
                   <button onClick={() => setDeleteTarget({ id: p.id, title: p.title })} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Verwijderen">

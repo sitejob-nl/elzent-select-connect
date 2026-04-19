@@ -27,17 +27,17 @@ export function useUpsertProperty() {
       title: string;
       location: string;
       city: string;
-      description?: string;
-      price?: number;
-      property_type?: string;
-      units?: number;
-      surface_area?: number;
-      bar_percentage?: number;
+      description?: string | null;
+      price?: number | null;
+      property_type?: string | null;
+      units?: number | null;
+      surface_area?: number | null;
+      bar_percentage?: number | null;
       status: string;
-      image_url?: string;
+      image_url?: string | null;
       tags?: string[];
-    }) => {
-      let propertyId = property.id;
+    }): Promise<{ id: string }> => {
+      let propertyId: string;
       let wasJustPublished = false;
 
       if (property.id) {
@@ -55,6 +55,7 @@ export function useUpsertProperty() {
         const { error } = await supabase.from("properties").update(rest).eq("id", id);
         if (error) throw error;
         wasJustPublished = oldStatus !== "published" && rest.status === "published";
+        propertyId = id;
       } else {
         const { data, error } = await supabase.from("properties").insert(property).select("id").single();
         if (error) throw error;
@@ -65,11 +66,16 @@ export function useUpsertProperty() {
       // Trigger email notifications only on the draft -> published transition
       // (or a brand-new published insert). Editing an already-published property
       // must NOT re-mail every matching client.
-      if (wasJustPublished && propertyId) {
+      if (wasJustPublished) {
         supabase.functions.invoke("notify-new-match", {
           body: { property_id: propertyId },
         }).catch(() => {}); // fire-and-forget, don't block the UI
       }
+
+      // Return the id so callers (e.g. AdminAanbod.handleSave) can
+      // flush queued images against it without a second slug-lookup
+      // round-trip — the old approach raced against slug-change edits.
+      return { id: propertyId };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-properties"] }),
   });

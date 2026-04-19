@@ -9,6 +9,18 @@ import {
 } from "@/hooks/usePropertyImages";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 const MAX_FILES_PER_PROPERTY = 20;
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -58,6 +70,8 @@ export default function PropertyImageManager({
   const [dragId, setDragId] = useState<string | null>(null);
   // Per-file pending upload indicator keyed by a short-lived UUID.
   const [uploading, setUploading] = useState<Set<string>>(new Set());
+  // Target for the delete-confirmation dialog (replaces native confirm()).
+  const [deleteTarget, setDeleteTarget] = useState<PropertyImage | null>(null);
 
   const { data: images, isLoading } = usePropertyImages(propertyId);
   const uploadMut = useUploadPropertyImage();
@@ -111,26 +125,50 @@ export default function PropertyImageManager({
       pushToQueue(files);
       return;
     }
+
+    // React state (`uploading`) does not update within this loop, so
+    // using `uploading.size` for both the cap check AND the
+    // sort_order would (a) let every file past the cap because the
+    // size stays 0 until the next render, and (b) assign sort_order
+    // 0 to every queued upload — collapsing them on top of each
+    // other. Track both via a local counter instead.
+    let nextOffset = images?.length ?? 0;
+    const accepted: { file: File; sortOrder: number; tempId: string }[] = [];
     for (const file of files) {
+      if (nextOffset >= MAX_FILES_PER_PROPERTY) {
+        toast({ title: "Maximum bereikt", description: `Maximaal ${MAX_FILES_PER_PROPERTY} afbeeldingen per object.`, variant: "destructive" });
+        break;
+      }
       const err = validateFile(file);
       if (err) {
         toast({ title: "Afbeelding geweigerd", description: `${file.name}: ${err}`, variant: "destructive" });
         continue;
       }
-      if ((images?.length ?? 0) + uploading.size >= MAX_FILES_PER_PROPERTY) {
-        toast({ title: "Maximum bereikt", description: `Maximaal ${MAX_FILES_PER_PROPERTY} afbeeldingen per object.`, variant: "destructive" });
-        break;
-      }
-      const tempId = crypto.randomUUID();
-      setUploading((prev) => new Set(prev).add(tempId));
+      accepted.push({ file, sortOrder: nextOffset, tempId: crypto.randomUUID() });
+      nextOffset++;
+    }
+
+    if (accepted.length === 0) return;
+
+    // Add every tempId to the in-flight set in one batch so the
+    // placeholders appear together.
+    setUploading((prev) => {
+      const next = new Set(prev);
+      for (const a of accepted) next.add(a.tempId);
+      return next;
+    });
+
+    // First image uploaded onto a property with zero existing rows
+    // claims hero automatically, so the card has something to show.
+    const startedEmpty = (images?.length ?? 0) === 0;
+    for (let i = 0; i < accepted.length; i++) {
+      const { file, sortOrder, tempId } = accepted[i];
       try {
-        const isHeroDefault = (images?.length ?? 0) === 0 && uploading.size === 0;
         await uploadMut.mutateAsync({
           propertyId,
           file,
-          // Sort_order = current count so new uploads land at the end
-          sortOrder: (images?.length ?? 0) + uploading.size,
-          isHero: isHeroDefault,
+          sortOrder,
+          isHero: startedEmpty && i === 0,
         });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Upload mislukt";
@@ -169,11 +207,12 @@ export default function PropertyImageManager({
     }
   };
 
-  const handleDelete = async (img: PropertyImage) => {
-    if (!propertyId) return;
-    if (!confirm("Deze afbeelding verwijderen?")) return;
+  const confirmDelete = async () => {
+    if (!propertyId || !deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
     try {
-      await deleteMut.mutateAsync({ id: img.id, url: img.url, property_id: propertyId });
+      await deleteMut.mutateAsync({ id: target.id, url: target.url, property_id: propertyId });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Kon niet verwijderen";
       toast({ title: "Verwijderen mislukt", description: msg, variant: "destructive" });
@@ -318,7 +357,7 @@ export default function PropertyImageManager({
                     </label>
                     <button
                       type="button"
-                      onClick={() => handleDelete(img)}
+                      onClick={() => setDeleteTarget(img)}
                       disabled={deleteMut.isPending}
                       className="p-1.5 rounded-md bg-red-500/80 hover:bg-red-500 text-white transition-colors disabled:opacity-50"
                       title="Verwijderen"
@@ -386,6 +425,29 @@ export default function PropertyImageManager({
       <p className="text-xs text-muted-foreground">
         {totalCount} / {MAX_FILES_PER_PROPERTY} afbeeldingen &middot; de als &ldquo;Hero&rdquo; gemarkeerde foto verschijnt op de kaart en detailpagina.
       </p>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Afbeelding verwijderen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Weet u zeker dat u deze afbeelding wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className={cn(buttonVariants({ variant: "destructive" }))}
+            >
+              Verwijderen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

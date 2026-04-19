@@ -1,16 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 const BUCKET = "property-images";
 
-export type PropertyImage = {
-  id: string;
-  property_id: string;
-  url: string;
-  alt_text: string | null;
-  is_hero: boolean;
-  sort_order: number;
-  created_at: string;
+// Re-export the generated row type so callers don't have to know
+// about the Database helper. Keeps a single source of truth — the
+// schema — and any column change flows straight through.
+export type PropertyImage = Database["public"]["Tables"]["property_images"]["Row"];
+
+// Storage path whitelist: extensions we persist are derived from
+// the File.type (mime), never from the user-supplied filename.
+// Keeps `.php.jpg` and similar shenanigans out of the bucket.
+const EXT_BY_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
 };
 
 // ─── Query: all images for a property ──────────────────────────
@@ -28,16 +33,24 @@ export function usePropertyImages(propertyId: string | undefined) {
         .order("is_hero", { ascending: false })
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as PropertyImage[];
+      return data ?? [];
     },
     enabled: !!propertyId,
   });
 }
 
 // Derive a storage path for a new image. Keyed by property_id so
-// the folder structure mirrors the DB relationship.
+// the folder structure mirrors the DB relationship. Extension is
+// derived from the file's mime type (validated against a whitelist)
+// — NOT from the original filename — so an attacker can't smuggle
+// `.svg` or `.php` into the bucket by renaming a jpeg.
 function buildStoragePath(propertyId: string, file: File): string {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const ext = EXT_BY_MIME[file.type];
+  if (!ext) {
+    // Caller is expected to validate up-front; this is a hard stop
+    // for the rare race where an unknown mime slips through.
+    throw new Error("Niet-ondersteund bestandstype. Alleen JPG, PNG en WEBP zijn toegestaan.");
+  }
   const uuid = crypto.randomUUID();
   return `${propertyId}/${uuid}.${ext}`;
 }
@@ -112,7 +125,7 @@ export function useUploadPropertyImage() {
         throw insertError;
       }
 
-      return inserted as PropertyImage;
+      return inserted;
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["property-images", vars.propertyId] });
