@@ -66,3 +66,21 @@ items below are defer-to-later polish.
 - **A11y minor** — On lightbox open, `tabIndex={-1}` + `ref.focus()` on
   the carousel region for nicer keyboard UX (currently
   `onOpenAutoFocus` is prevented entirely).
+
+## Task 3 (Favorites page) follow-ups
+
+- **Error-state UI** — both `FavorietenPage`, `AanbodPage`, and
+  `DashboardPage` show the empty state when `useProperties` /
+  `useFavorites` / `useInterestRequests` error (network/RLS). Users
+  think data is missing when it's actually a fetch failure. Implement a
+  shared `<ErrorState onRetry={...} />` component and wire it into all
+  three pages in one sweep.
+- **Mobile nav highlight inconsistency** — `AppLayout.tsx` mobile
+  bottom-nav uses exact `===` path match while desktop uses
+  `startsWith(path + "/")`. When sub-routes are added later, mobile
+  won't highlight. Align both to the desktop rule.
+- **Small-screen (320px) label wrap** — 4 bottom-nav items with
+  `px-4 py-2` at 320px viewport can wrap the "Mijn Profiel" label. Test
+  on iPhone SE; if it breaks, reduce `px-2` or shorten labels.
+- **Pagination on FavorietenPage** — belegger with 50+ favorites →
+  consider pagination or virtual scroll. Non-issue at launch.

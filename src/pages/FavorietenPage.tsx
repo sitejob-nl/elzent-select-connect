@@ -16,6 +16,7 @@ const FavorietenPage = () => {
 
   const favorited = (properties ?? [])
     .filter((p) => !p.deleted_at && (favorites?.has(p.id) ?? false))
+    .slice()
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
@@ -34,7 +35,7 @@ const FavorietenPage = () => {
           <PropertyListSkeleton />
         ) : favorited.length === 0 ? (
           <div className="text-center py-20 flex flex-col items-center">
-            <Heart className="size-12 text-muted-foreground/60 mb-4" />
+            <Heart className="size-12 text-muted-foreground/60 mb-4" aria-hidden="true" />
             <h2 className="font-display font-bold text-xl text-foreground mb-2">
               Nog geen opgeslagen objecten
             </h2>
@@ -49,7 +50,7 @@ const FavorietenPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger">
             {favorited.map((p) => (
               <PropertyCard
-                key={p.slug}
+                key={p.id}
                 slug={p.slug}
                 title={p.title}
                 location={p.location}
@@ -62,7 +63,7 @@ const FavorietenPage = () => {
                 createdAt={p.created_at}
                 isFavorite={true}
                 onToggleFavorite={() =>
-                  toggleFavorite.mutate({ propertyId: p.id, isFavorite: true })
+                  toggleFavorite.mutate({ propertyId: p.id, isFavorite: favorites?.has(p.id) ?? true })
                 }
               />
             ))}
