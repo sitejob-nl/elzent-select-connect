@@ -16,8 +16,11 @@ import { cn } from "@/lib/utils";
 import { Plus, Pencil, Trash2, Eye, EyeOff, Loader2, X, ArrowLeft, Building2 } from "lucide-react";
 import { TableSkeleton } from "@/components/Skeletons";
 import { useAdminProperties, useUpsertProperty, useSoftDeleteProperty } from "@/hooks/useAdmin";
+import { useUploadPropertyImage } from "@/hooks/usePropertyImages";
 import { useToast } from "@/hooks/use-toast";
 import { PROPERTY_TYPES, propertyTypeLabel } from "@/lib/taxonomy";
+import PropertyImageManager, { type QueuedImage } from "@/components/PropertyImageManager";
+import { supabase } from "@/integrations/supabase/client";
 
 const emptyProperty = {
   slug: "",
@@ -55,6 +58,7 @@ export default function AdminAanbod() {
   const { data: properties, isLoading } = useAdminProperties();
   const upsert = useUpsertProperty();
   const softDelete = useSoftDeleteProperty();
+  const uploadImage = useUploadPropertyImage();
   const { toast } = useToast();
   const [editing, setEditing] = useState<(typeof emptyProperty & { id?: string }) | null>(null);
   const [tags, setTags] = useState<string[]>([]);
@@ -62,6 +66,13 @@ export default function AdminAanbod() {
   const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
   const [slugManual, setSlugManual] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  // Images queued client-side while a brand-new property has no id yet.
+  // Flushed after the initial save when the property_id is known.
+  const [queuedImages, setQueuedImages] = useState<QueuedImage[]>([]);
+  // Tracks whether the image manager has any upload currently in flight.
+  // Save is disabled while this is true so we never persist an
+  // inconsistent state.
+  const [imagesBusy, setImagesBusy] = useState(false);
   const tagRef = useRef<HTMLInputElement>(null);
 
   const filtered = (properties ?? []).filter((p) => {
@@ -74,6 +85,7 @@ export default function AdminAanbod() {
     setTags([]);
     setTagInput("");
     setSlugManual(false);
+    setQueuedImages([]);
   };
 
   const openEdit = (p: typeof emptyProperty & { id: string }) => {
@@ -81,6 +93,15 @@ export default function AdminAanbod() {
     setTags(p.tags ?? []);
     setTagInput("");
     setSlugManual(true);
+    setQueuedImages([]);
+  };
+
+  const closeEditor = () => {
+    // Free any object URLs created for the queue so we don't leak
+    // blob memory between edit sessions.
+    queuedImages.forEach((q) => URL.revokeObjectURL(q.previewUrl));
+    setQueuedImages([]);
+    setEditing(null);
   };
 
   const addTag = (value: string) => {
@@ -115,18 +136,74 @@ export default function AdminAanbod() {
 
   const handleSave = async () => {
     if (!editing) return;
+    // Base required fields for any status (incl. draft).
     if (!editing.title || !editing.slug || !editing.city || !editing.location) {
       toast({ title: "Vul verplichte velden in", description: "Titel, slug, stad en locatie zijn verplicht.", variant: "destructive" });
       return;
     }
+    // Stricter rules only when publishing — drafts may be incomplete.
+    if (editing.status === "published") {
+      if (editing.price == null || !editing.property_type) {
+        toast({
+          title: "Publicatie onvolledig",
+          description: "Prijs en type vastgoed zijn verplicht om te publiceren.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    // Don't let the admin save mid-upload — we'd race the image
+    // inserts against the property update.
+    if (imagesBusy) {
+      toast({ title: "Even geduld", description: "Wacht tot alle afbeeldingen zijn geupload.", variant: "destructive" });
+      return;
+    }
     try {
+      const isNew = !editing.id;
       await upsert.mutateAsync({ ...editing, tags });
+
+      // For new properties we queue images client-side until the
+      // property row exists. Flush them now that it does.
+      if (isNew && queuedImages.length > 0) {
+        // Look up the id of the just-inserted property. upsert doesn't
+        // return it, so we re-query by the unique slug.
+        const { data: fresh, error: lookupError } = await supabase
+          .from("properties")
+          .select("id")
+          .eq("slug", editing.slug)
+          .single();
+        if (lookupError || !fresh?.id) {
+          throw new Error(lookupError?.message ?? "Kon nieuw object niet terugvinden om afbeeldingen te koppelen.");
+        }
+        const newId = fresh.id;
+        let heroClaimed = false;
+        for (let i = 0; i < queuedImages.length; i++) {
+          const q = queuedImages[i];
+          try {
+            await uploadImage.mutateAsync({
+              propertyId: newId,
+              file: q.file,
+              isHero: q.isHero && !heroClaimed,
+              sortOrder: i,
+            });
+            if (q.isHero) heroClaimed = true;
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Upload mislukt";
+            toast({ title: `Afbeelding ${q.file.name} mislukt`, description: msg, variant: "destructive" });
+          } finally {
+            URL.revokeObjectURL(q.previewUrl);
+          }
+        }
+        setQueuedImages([]);
+      }
+
       toast({ title: editing.id ? "Object bijgewerkt" : "Object aangemaakt" });
       setEditing(null);
-    } catch (err: any) {
-      const msg = err?.message?.includes("duplicate key")
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const msg = message.includes("duplicate key")
         ? "Er bestaat al een object met deze slug."
-        : err?.message || "Onbekende fout";
+        : message || "Onbekende fout";
       toast({ title: "Fout bij opslaan", description: msg, variant: "destructive" });
     }
   };
@@ -149,7 +226,7 @@ export default function AdminAanbod() {
       <AdminLayout>
         <div className="p-6 lg:p-8 max-w-3xl">
           <button
-            onClick={() => setEditing(null)}
+            onClick={closeEditor}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ArrowLeft className="h-4 w-4" /> Terug naar overzicht
@@ -240,12 +317,16 @@ export default function AdminAanbod() {
                     </select>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Afbeelding URL</label>
-                  <input value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })}
-                    placeholder="https://..." className={inputClass} />
-                </div>
               </div>
+            </SectionCard>
+
+            <SectionCard title="Foto's" label="Galerij & Hero">
+              <PropertyImageManager
+                propertyId={editing.id}
+                onBusyChange={setImagesBusy}
+                queued={queuedImages}
+                onQueuedChange={setQueuedImages}
+              />
             </SectionCard>
 
             <SectionCard title="Kenmerken" label="Tags">
@@ -276,11 +357,17 @@ export default function AdminAanbod() {
             </SectionCard>
 
             <div className="flex gap-3 pt-2">
-              <Button variant="gold" onClick={handleSave} disabled={upsert.isPending} className="px-6">
-                {upsert.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              <Button
+                variant="gold"
+                onClick={handleSave}
+                disabled={upsert.isPending || imagesBusy}
+                className="px-6"
+                title={imagesBusy ? "Wacht tot alle afbeeldingen zijn geupload" : undefined}
+              >
+                {(upsert.isPending || imagesBusy) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {editing.id ? "Opslaan" : "Aanmaken"}
               </Button>
-              <Button variant="outline" onClick={() => setEditing(null)}>Annuleren</Button>
+              <Button variant="outline" onClick={closeEditor}>Annuleren</Button>
             </div>
           </div>
         </div>
