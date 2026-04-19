@@ -244,7 +244,7 @@ const PropertyPhotoGallery = ({
                 </span>
               )}
             </div>
-            <h1 className="text-3xl sm:text-4xl font-display font-bold text-white mb-1">
+            <h1 className="text-2xl sm:text-4xl font-display font-bold text-white mb-1 break-words [overflow-wrap:anywhere]">
               {title}
             </h1>
             <p className="text-gray-200">{location}</p>
