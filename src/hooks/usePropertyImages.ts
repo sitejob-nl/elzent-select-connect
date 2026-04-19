@@ -64,6 +64,21 @@ function extractStoragePath(publicUrl: string): string | null {
   return publicUrl.slice(idx + marker.length);
 }
 
+// Invalidate all property-related caches. Used after any mutation
+// that touches `properties.image_url` so list surfaces, admin
+// listings and detail pages all re-read the fresh hero.
+function invalidatePropertyCaches(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({
+    predicate: (q) => {
+      const k = q.queryKey[0];
+      return (
+        typeof k === "string" &&
+        (k === "properties" || k === "admin-properties" || k === "property")
+      );
+    },
+  });
+}
+
 // ─── Mutation: upload + insert row ─────────────────────────────
 export function useUploadPropertyImage() {
   const qc = useQueryClient();
@@ -125,10 +140,23 @@ export function useUploadPropertyImage() {
         throw insertError;
       }
 
+      // Keep the legacy `properties.image_url` column in sync with
+      // the hero. List surfaces (AanbodPage, FavorietenPage,
+      // DashboardPage, PropertyCard) still read this column
+      // directly — without this write, freshly uploaded images
+      // would only surface on the detail page.
+      if (isHero) {
+        await supabase
+          .from("properties")
+          .update({ image_url: publicUrl })
+          .eq("id", propertyId);
+      }
+
       return inserted;
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["property-images", vars.propertyId] });
+      invalidatePropertyCaches(qc);
     },
   });
 }
@@ -166,14 +194,28 @@ export function useUpdatePropertyImage() {
         if (unheroError) throw unheroError;
       }
 
-      const { error } = await supabase
+      // `.select(...)` returns the updated row so we can sync the
+      // legacy `properties.image_url` column when hero changed.
+      const { data: updated, error } = await supabase
         .from("property_images")
         .update(rest)
-        .eq("id", id);
+        .eq("id", id)
+        .select("url, property_id")
+        .single();
       if (error) throw error;
+
+      // Mirror the hero URL onto `properties.image_url` so list
+      // cards and dashboards pick up the new hero immediately.
+      if (rest.is_hero === true && updated) {
+        await supabase
+          .from("properties")
+          .update({ image_url: updated.url })
+          .eq("id", updated.property_id);
+      }
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["property-images", vars.property_id] });
+      invalidatePropertyCaches(qc);
     },
   });
 }
@@ -187,6 +229,17 @@ export function useDeletePropertyImage() {
       url: string;
       property_id: string;
     }) => {
+      // Look up the row first so we know whether it was the hero.
+      // Needed so we can promote a replacement and resync
+      // `properties.image_url` after deletion.
+      const { data: existing, error: fetchError } = await supabase
+        .from("property_images")
+        .select("is_hero")
+        .eq("id", args.id)
+        .maybeSingle();
+      if (fetchError) throw fetchError;
+      const wasHero = existing?.is_hero === true;
+
       const path = extractStoragePath(args.url);
       // Remove the storage object first so we don't leave a dead
       // row pointing at an already-gone file if storage fails.
@@ -206,9 +259,44 @@ export function useDeletePropertyImage() {
         .delete()
         .eq("id", args.id);
       if (error) throw error;
+
+      // If we just removed the hero, the legacy
+      // `properties.image_url` column now points at a dead URL.
+      // Promote the next image (lowest sort_order) to hero and
+      // mirror its URL onto the property; if none remain, clear
+      // the column so the placeholder takes over.
+      if (wasHero) {
+        const { data: remaining, error: remainingError } = await supabase
+          .from("property_images")
+          .select("id, url")
+          .eq("property_id", args.property_id)
+          .order("sort_order", { ascending: true })
+          .limit(1);
+        if (remainingError) throw remainingError;
+
+        const next = remaining?.[0];
+        if (next) {
+          const { error: promoteError } = await supabase
+            .from("property_images")
+            .update({ is_hero: true })
+            .eq("id", next.id);
+          if (promoteError) throw promoteError;
+
+          await supabase
+            .from("properties")
+            .update({ image_url: next.url })
+            .eq("id", args.property_id);
+        } else {
+          await supabase
+            .from("properties")
+            .update({ image_url: null })
+            .eq("id", args.property_id);
+        }
+      }
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["property-images", vars.property_id] });
+      invalidatePropertyCaches(qc);
     },
   });
 }
