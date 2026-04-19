@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import AanbodPage from "./pages/AanbodPage";
 import DetailPage from "./pages/DetailPage";
+import FavorietenPage from "./pages/FavorietenPage";
 import ProfilePage from "./pages/ProfilePage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminAanbod from "./pages/admin/AdminAanbod";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/aanbod" element={<ProtectedRoute><AanbodPage /></ProtectedRoute>} />
             <Route path="/aanbod/:slug" element={<ProtectedRoute><DetailPage /></ProtectedRoute>} />
+            <Route path="/favorieten" element={<ProtectedRoute><FavorietenPage /></ProtectedRoute>} />
             <Route path="/profiel" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             {/* Admin routes */}
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
