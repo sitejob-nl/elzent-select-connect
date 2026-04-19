@@ -16,9 +16,20 @@ export default function AdminToegang() {
     if (!user) return;
     try {
       await review.mutateAsync({ id, status, reviewedBy: user.id });
-      toast({ title: status === "approved" ? "Aanvraag goedgekeurd" : "Aanvraag geweigerd" });
-    } catch {
-      toast({ title: "Fout", variant: "destructive" });
+      toast({
+        title: status === "approved" ? "Aanvraag goedgekeurd" : "Aanvraag geweigerd",
+        description:
+          status === "approved"
+            ? "Uitnodiging verzonden naar het e-mailadres."
+            : undefined,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : undefined;
+      toast({
+        title: status === "approved" ? "Goedkeuring mislukt" : "Fout",
+        description: message || "Onbekende fout. Probeer opnieuw.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -70,7 +81,7 @@ export default function AdminToegang() {
                           <button
                             onClick={() => handleReview(r.id, "approved")}
                             disabled={review.isPending}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors disabled:opacity-50"
                           >
                             <CheckCircle className="h-3.5 w-3.5" /> Goedkeuren
                           </button>
@@ -97,10 +108,10 @@ export default function AdminToegang() {
                     <div key={r.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-muted/30 transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          r.status === "approved" ? "bg-emerald-100" : "bg-red-100"
+                          r.status === "approved" ? "bg-primary/15" : "bg-red-100"
                         }`}>
                           <span className={`text-[10px] font-bold font-display ${
-                            r.status === "approved" ? "text-emerald-700" : "text-red-600"
+                            r.status === "approved" ? "text-primary" : "text-red-600"
                           }`}>
                             {r.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
                           </span>
@@ -111,7 +122,7 @@ export default function AdminToegang() {
                         </div>
                       </div>
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        r.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
+                        r.status === "approved" ? "bg-primary/15 text-primary" : "bg-red-100 text-red-600"
                       }`}>
                         {r.status === "approved" ? "Goedgekeurd" : "Geweigerd"}
                       </span>

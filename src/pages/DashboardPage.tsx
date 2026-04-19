@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProperties } from "@/hooks/useProperties";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useInterestRequests } from "@/hooks/useInterest";
+import { propertyTypeLabel } from "@/lib/taxonomy";
 
 const DashboardPage = () => {
   const { profile } = useAuth();
@@ -24,8 +25,9 @@ const DashboardPage = () => {
     .sort((a, b) => b.match_score - a.match_score)
     .slice(0, 4);
 
-  const avgBar = properties?.length
-    ? (properties.reduce((sum, p) => sum + (p.bar_percentage ?? 0), 0) / properties.filter((p) => p.bar_percentage).length).toFixed(1)
+  const withBar = (properties ?? []).filter((p) => p.bar_percentage);
+  const avgBar = withBar.length > 0
+    ? (withBar.reduce((sum, p) => sum + (p.bar_percentage ?? 0), 0) / withBar.length).toFixed(1)
     : "–";
 
   // Portfolio value: sum of prices of properties where user has shown interest
@@ -42,9 +44,9 @@ const DashboardPage = () => {
   };
 
   const stats = [
-    { label: "Actieve Interesse", value: interestCount.toString(), sub: "+1 deze maand", icon: Heart, color: "text-red-400", subColor: "text-emerald-600" },
+    { label: "Actieve Interesse", value: interestCount.toString(), sub: "Geregistreerde interesses", icon: Heart, color: "text-red-400", subColor: "text-muted-foreground" },
     { label: "Portfolio Waarde", value: formatPortfolio(portfolioValue), sub: "Totale interesse", icon: Wallet, color: "text-primary", subColor: "text-muted-foreground" },
-    { label: "Gem. BAR", value: `${avgBar}%`, sub: "Bruto aanvangsrendement", icon: TrendingUp, color: "text-emerald-500", subColor: "text-muted-foreground" },
+    { label: "Gem. BAR", value: avgBar === "–" ? avgBar : `${avgBar}%`, sub: "Bruto aanvangsrendement", icon: TrendingUp, color: "text-primary", subColor: "text-muted-foreground" },
     { label: "Nieuwe Matches", value: matches.length.toString(), sub: "Bekijk aanbod →", icon: Sparkles, color: "text-primary", subColor: "text-primary" },
   ];
 
@@ -104,7 +106,7 @@ const DashboardPage = () => {
                   key={m.slug}
                   slug={m.slug}
                   title={m.title}
-                  location={`${m.location} · ${m.units ? `${m.units} eenheden` : m.property_type ?? ""}`}
+                  location={`${m.location} · ${m.units ? `${m.units} eenheden` : propertyTypeLabel(m.property_type)}`}
                   matchReason={`Match: ${m.match_score}% op basis van uw profiel`}
                   price={m.price}
                   barPercentage={m.bar_percentage}

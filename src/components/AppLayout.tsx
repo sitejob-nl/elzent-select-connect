@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Bell, LogOut, LayoutDashboard, Building2, User } from "lucide-react";
+import { LogOut, LayoutDashboard, Building2, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
@@ -51,10 +51,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           </nav>
 
           <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-full hover:bg-muted transition-colors">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
-            </button>
             <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center cursor-pointer" onClick={() => navigate("/profiel")}>
               <span className="text-xs font-bold text-primary-foreground font-display">{initials}</span>
             </div>

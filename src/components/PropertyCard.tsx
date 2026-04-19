@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Sparkles, Heart } from "lucide-react";
+import { propertyTypeLabel } from "@/lib/taxonomy";
 
 interface PropertyCardProps {
   slug: string;
@@ -69,13 +70,13 @@ const PropertyCard = ({
       {/* Top-left badges */}
       <div className="absolute top-3 left-3 flex gap-1.5">
         {isNew(createdAt) && (
-          <span className="px-2 py-1 bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-sm">
+          <span className="px-2 py-1 bg-primary text-white text-xs font-bold uppercase tracking-wider rounded-sm">
             Nieuw
           </span>
         )}
         {propertyType && (
           <span className="px-2 py-1 bg-primary/80 text-white text-xs font-medium rounded-sm backdrop-blur-sm">
-            {propertyType}
+            {propertyTypeLabel(propertyType)}
           </span>
         )}
       </div>
@@ -126,13 +127,13 @@ const PropertyCard = ({
         </div>
         <div>
           <div className="text-xs text-muted-foreground">BAR</div>
-          <div className="font-display font-bold text-emerald-600 text-sm">
+          <div className="font-display font-bold text-primary text-sm">
             {barPercentage ? `${barPercentage}%` : "–"}
           </div>
         </div>
         <div>
           <div className="text-xs text-muted-foreground">Type</div>
-          <div className="font-display font-bold text-foreground text-sm">{propertyType ?? "–"}</div>
+          <div className="font-display font-bold text-foreground text-sm">{propertyType ? propertyTypeLabel(propertyType) : "–"}</div>
         </div>
       </div>
 

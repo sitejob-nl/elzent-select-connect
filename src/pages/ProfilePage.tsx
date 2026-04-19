@@ -5,22 +5,7 @@ import { MapPin, Home, PiggyBank, Bell, MessageSquare, Loader2 } from "lucide-re
 import { ProfileSkeleton } from "@/components/Skeletons";
 import { toast } from "sonner";
 import { usePreferences, useSavePreferences } from "@/hooks/usePreferences";
-
-const regions = [
-  { name: "Eindhoven", sub: "Brainport regio" },
-  { name: "'s-Hertogenbosch", sub: "Historisch centrum" },
-  { name: "Tilburg", sub: "Logistieke hotspot" },
-  { name: "Breda", sub: "West-Brabant" },
-];
-
-const types = [
-  { name: "Transformatie projecten", desc: "Herontwikkeling van bestaande panden." },
-  { name: "Nieuwbouw", desc: "Grondposities en nieuwbouwontwikkelingen." },
-  { name: "Beleggingspanden (bestaand)", desc: "Verhuurde woningen of commercieel vastgoed." },
-  { name: "Kamerverhuurpanden", desc: "Panden geschikt voor of ingericht als kamerverhuur." },
-  { name: "Commercieel vastgoed", desc: "Winkels, kantoren of bedrijfsruimtes." },
-  { name: "Grondgebonden woningen", desc: "Eengezinswoningen als belegging." },
-];
+import { REGIONS, PROPERTY_TYPES, propertyTypeLabel } from "@/lib/taxonomy";
 
 const BUDGET_MIN = 100_000;
 const BUDGET_MAX = 5_000_000;
@@ -127,7 +112,7 @@ const ProfilePage = () => {
             <SectionCard title="Regio's" label="Locatie focus">
               <p className="text-sm text-muted-foreground mb-4">In welke steden bent u geïnteresseerd?</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {regions.map((r) => (
+                {REGIONS.map((r) => (
                   <label
                     key={r.name}
                     className={`relative flex items-start py-3 px-4 border rounded cursor-pointer hover:bg-muted/50 transition-all ${
@@ -156,18 +141,18 @@ const ProfilePage = () => {
             {/* Type Vastgoed */}
             <SectionCard title="Type Vastgoed" label="Wat zoekt u?">
               <div className="space-y-4">
-                {types.map((t) => (
-                  <div key={t.name} className="flex items-start">
+                {PROPERTY_TYPES.map((t) => (
+                  <div key={t.value} className="flex items-start">
                     <div className="flex items-center h-5">
                       <input
                         type="checkbox"
-                        checked={selectedTypes.includes(t.name)}
-                        onChange={() => toggleType(t.name)}
+                        checked={selectedTypes.includes(t.value)}
+                        onChange={() => toggleType(t.value)}
                         className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                       />
                     </div>
                     <div className="ml-3 text-sm">
-                      <div className="font-medium text-foreground">{t.name}</div>
+                      <div className="font-medium text-foreground">{t.label}</div>
                       <p className="text-muted-foreground">{t.desc}</p>
                     </div>
                   </div>
@@ -282,7 +267,7 @@ const ProfilePage = () => {
                     {selectedTypes.length > 0 && (
                       <div className="flex items-start text-sm">
                         <Home className="h-4 w-4 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-200">{selectedTypes.slice(0, 3).join(", ")}{selectedTypes.length > 3 ? ` +${selectedTypes.length - 3}` : ""}</span>
+                        <span className="text-gray-200">{selectedTypes.slice(0, 3).map(propertyTypeLabel).join(", ")}{selectedTypes.length > 3 ? ` +${selectedTypes.length - 3}` : ""}</span>
                       </div>
                     )}
                     <div className="flex items-start text-sm">
@@ -308,16 +293,13 @@ const ProfilePage = () => {
               {/* Contact card */}
               <div className="bg-card rounded-lg border border-border p-6">
                 <h4 className="font-display font-bold text-foreground mb-2">Hulp nodig?</h4>
-                <p className="text-sm text-muted-foreground mb-4">Neem contact op met uw accountmanager.</p>
-                <div className="flex items-center">
-                  <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-primary font-display text-sm mr-3">WB</div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Wessel Bollen</p>
-                    <button className="text-xs text-primary hover:underline flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" /> Stuur bericht
-                    </button>
-                  </div>
-                </div>
+                <p className="text-sm text-muted-foreground mb-4">Neem contact op met ons team voor vragen over uw profiel of het aanbod.</p>
+                <a
+                  href="mailto:info@elzent.nl"
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  <MessageSquare className="h-3 w-3" /> Stuur ons een bericht
+                </a>
               </div>
             </div>
           </div>

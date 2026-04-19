@@ -38,19 +38,34 @@ export function useUpsertProperty() {
       tags?: string[];
     }) => {
       let propertyId = property.id;
+      let wasJustPublished = false;
 
       if (property.id) {
         const { id, ...rest } = property;
+        // Detect a draft -> published transition so we only notify once per publish,
+        // not on every edit of an already-published property.
+        const { data: prev, error: prevError } = await supabase
+          .from("properties")
+          .select("status")
+          .eq("id", id)
+          .single();
+        // If we can't read the previous status, default to "published" so we don't
+        // mass-mail clients on an unknown-state edit. Better to under-notify than re-spam.
+        const oldStatus = prevError || !prev ? "published" : prev.status;
         const { error } = await supabase.from("properties").update(rest).eq("id", id);
         if (error) throw error;
+        wasJustPublished = oldStatus !== "published" && rest.status === "published";
       } else {
         const { data, error } = await supabase.from("properties").insert(property).select("id").single();
         if (error) throw error;
         propertyId = data.id;
+        wasJustPublished = property.status === "published";
       }
 
-      // Trigger email notifications when publishing
-      if (property.status === "published" && propertyId) {
+      // Trigger email notifications only on the draft -> published transition
+      // (or a brand-new published insert). Editing an already-published property
+      // must NOT re-mail every matching client.
+      if (wasJustPublished && propertyId) {
         supabase.functions.invoke("notify-new-match", {
           body: { property_id: propertyId },
         }).catch(() => {}); // fire-and-forget, don't block the UI
@@ -89,6 +104,39 @@ export function useAdminClients() {
       if (error) throw error;
       return data ?? [];
     },
+  });
+}
+
+export function useUpdateClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    // Email is intentionally omitted — changing auth-email requires service role
+    // via an edge function (not a plain profiles UPDATE), so this hook rejects it.
+    mutationFn: async (client: {
+      id: string;
+      full_name?: string | null;
+      company?: string | null;
+      phone?: string | null;
+    }) => {
+      const { id, ...rest } = client;
+      const { error } = await supabase.from("profiles").update(rest).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-clients"] }),
+  });
+}
+
+export function useSoftDeleteClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-clients"] }),
   });
 }
 
@@ -139,6 +187,30 @@ export function useReviewAccessRequest() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status, reviewedBy }: { id: string; status: string; reviewedBy: string }) => {
+      if (status === "approved") {
+        // Approval creates the auth user, profile + sends invite email via edge function.
+        const { data, error } = await supabase.functions.invoke("approve-access-request", {
+          body: { access_request_id: id },
+        });
+        if (error) {
+          // Edge function non-2xx: try to pull a readable message out of the response.
+          // supabase-js attaches the response as error.context when available.
+          let message = error.message || "Kon aanvraag niet goedkeuren";
+          try {
+            const ctx = (error as unknown as { context?: Response }).context;
+            if (ctx && typeof ctx.json === "function") {
+              const body = await ctx.json();
+              if (body?.error) message = body.error;
+            }
+          } catch {
+            // ignore body parse failure — fall back to error.message
+          }
+          throw new Error(message);
+        }
+        if (data?.error) throw new Error(data.error);
+        return;
+      }
+      // rejected: plain DB update (no user creation).
       const { error } = await supabase
         .from("access_requests")
         .update({ status, reviewed_by: reviewedBy })
@@ -189,8 +261,9 @@ export function useAdminStats() {
         supabase.from("interest_requests").select("id", { count: "exact" }).eq("status", "pending"),
       ]);
 
-      const avgBar = properties.data?.length
-        ? properties.data.reduce((s, p) => s + (p.bar_percentage ?? 0), 0) / properties.data.filter((p) => p.bar_percentage).length
+      const withBar = properties.data?.filter((p) => p.bar_percentage) ?? [];
+      const avgBar = withBar.length > 0
+        ? withBar.reduce((s, p) => s + (p.bar_percentage ?? 0), 0) / withBar.length
         : 0;
 
       return {

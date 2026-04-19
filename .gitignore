@@ -21,6 +21,9 @@ dist-ssr
 
 # Test setup scripts
 qa-setup*.mjs
+qa-smoke.*
+qa-final-*.ts
+pw-final-*.ts
 .env.test
 
 # Claude Code local settings (may contain secrets)
@@ -28,6 +31,7 @@ qa-setup*.mjs
 
 # Test artifacts
 test-results/
+qa-screenshots/
 supabase/.temp/
 
 # Editor directories and files

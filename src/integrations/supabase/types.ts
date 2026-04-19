@@ -381,6 +381,7 @@ export type Database = {
         Row: {
           bar_percentage: number | null
           city: string
+          contact_profile_id: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -401,6 +402,7 @@ export type Database = {
         Insert: {
           bar_percentage?: number | null
           city: string
+          contact_profile_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -421,6 +423,7 @@ export type Database = {
         Update: {
           bar_percentage?: number | null
           city?: string
+          contact_profile_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -440,11 +443,117 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "properties_contact_profile_id_fkey"
+            columns: ["contact_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "properties_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_documents: {
+        Row: {
+          created_at: string
+          file_size_kb: number | null
+          file_type: string
+          file_url: string
+          id: string
+          name: string
+          property_id: string
+          requires_interest: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          file_size_kb?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          name: string
+          property_id: string
+          requires_interest?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          file_size_kb?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          name?: string
+          property_id?: string
+          requires_interest?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_documents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_documents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_view_counts"
+            referencedColumns: ["property_id"]
+          },
+        ]
+      }
+      property_images: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          id: string
+          is_hero: boolean
+          property_id: string
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          id?: string
+          is_hero?: boolean
+          property_id: string
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          id?: string
+          is_hero?: boolean
+          property_id?: string
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_view_counts"
+            referencedColumns: ["property_id"]
           },
         ]
       }
@@ -501,6 +610,58 @@ export type Database = {
       }
     }
     Views: {
+      interest_status_display: {
+        Row: {
+          id: string | null
+          profile_id: string | null
+          property_id: string | null
+          status: string | null
+          status_label: string | null
+          step_number: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          profile_id?: string | null
+          property_id?: string | null
+          status?: string | null
+          status_label?: never
+          step_number?: never
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          profile_id?: string | null
+          property_id?: string | null
+          status?: string | null
+          status_label?: never
+          step_number?: never
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interest_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interest_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interest_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_view_counts"
+            referencedColumns: ["property_id"]
+          },
+        ]
+      }
       property_view_counts: {
         Row: {
           property_id: string | null
@@ -516,6 +677,14 @@ export type Database = {
         Args: { p_profile_id: string; p_property_id: string }
         Returns: number
       }
+      calculate_match_scores_for_profile: {
+        Args: { p_profile_id: string }
+        Returns: {
+          property_id: string
+          score: number
+        }[]
+      }
+      can_access_document: { Args: { p_document_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {

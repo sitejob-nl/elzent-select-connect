@@ -21,7 +21,7 @@ export default function AdminLeads() {
 
   const statusColor = (s: string) => {
     if (s === "new") return "bg-amber-100 text-amber-700";
-    if (s === "invited") return "bg-emerald-100 text-emerald-700";
+    if (s === "invited") return "bg-primary/15 text-primary";
     return "bg-muted text-muted-foreground";
   };
 
@@ -77,7 +77,7 @@ export default function AdminLeads() {
                         <>
                           <button
                             onClick={() => handleStatus(l.id, "invited")}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
                           >
                             <UserPlus className="h-3.5 w-3.5" /> Uitnodigen
                           </button>

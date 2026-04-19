@@ -1,11 +1,23 @@
 import { useState, useRef, KeyboardEvent } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import SectionCard from "@/components/SectionCard";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 import { Plus, Pencil, Trash2, Eye, EyeOff, Loader2, X, ArrowLeft, Building2 } from "lucide-react";
 import { TableSkeleton } from "@/components/Skeletons";
 import { useAdminProperties, useUpsertProperty, useSoftDeleteProperty } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
+import { PROPERTY_TYPES, propertyTypeLabel } from "@/lib/taxonomy";
 
 const emptyProperty = {
   slug: "",
@@ -49,6 +61,7 @@ export default function AdminAanbod() {
   const [tagInput, setTagInput] = useState("");
   const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
   const [slugManual, setSlugManual] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const tagRef = useRef<HTMLInputElement>(null);
 
   const filtered = (properties ?? []).filter((p) => {
@@ -118,13 +131,15 @@ export default function AdminAanbod() {
     }
   };
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Weet u zeker dat u "${title}" wilt verwijderen?`)) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await softDelete.mutateAsync(id);
+      await softDelete.mutateAsync(deleteTarget.id);
       toast({ title: "Object verwijderd" });
     } catch {
       toast({ title: "Fout bij verwijderen", variant: "destructive" });
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -210,10 +225,9 @@ export default function AdminAanbod() {
                     <select value={editing.property_type ?? ""} onChange={(e) => setEditing({ ...editing, property_type: e.target.value })}
                       className={inputClass}>
                       <option value="">— Selecteer —</option>
-                      <option value="woning">Woning</option>
-                      <option value="appartement">Appartement</option>
-                      <option value="commercieel">Commercieel</option>
-                      <option value="gemengd">Gemengd</option>
+                      {PROPERTY_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -324,7 +338,7 @@ export default function AdminAanbod() {
                 <span className="text-sm text-muted-foreground">{p.city}</span>
                 <span className="text-sm text-foreground font-medium">{p.bar_percentage ? `${p.bar_percentage}%` : "–"}</span>
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${
-                  p.status === "published" ? "bg-emerald-100 text-emerald-700" :
+                  p.status === "published" ? "bg-primary/15 text-primary" :
                   p.status === "draft" ? "bg-amber-100 text-amber-700" :
                   "bg-muted text-muted-foreground"
                 }`}>
@@ -335,7 +349,7 @@ export default function AdminAanbod() {
                   <button onClick={() => openEdit(p as any)} className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Bewerken">
                     <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
-                  <button onClick={() => handleDelete(p.id, p.title)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Verwijderen">
+                  <button onClick={() => setDeleteTarget({ id: p.id, title: p.title })} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Verwijderen">
                     <Trash2 className="h-3.5 w-3.5 text-red-400" />
                   </button>
                 </div>
@@ -344,6 +358,26 @@ export default function AdminAanbod() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Object verwijderen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Weet u zeker dat u &ldquo;{deleteTarget?.title}&rdquo; wilt verwijderen? Dit kan later worden hersteld.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className={cn(buttonVariants({ variant: "destructive" }))}
+            >
+              Verwijderen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

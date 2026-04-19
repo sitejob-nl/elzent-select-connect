@@ -1,6 +1,8 @@
 const ALLOWED_ORIGINS = [
   "https://app.resid.nl",
   "https://elzent-select-connect.vercel.app",
+  "http://localhost:8080",
+  "http://localhost:9090",
 ];
 
 export function getCorsHeaders(req: Request): Record<string, string> {

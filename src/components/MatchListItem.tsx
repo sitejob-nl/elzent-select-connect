@@ -39,7 +39,7 @@ const MatchListItem = ({ slug, title, location, matchReason, price, barPercentag
     <div className="text-right hidden sm:block">
       <div className="text-sm font-bold text-foreground font-display">{formatPrice(price)}</div>
       {barPercentage && (
-        <div className="text-xs text-emerald-600">BAR {barPercentage}%</div>
+        <div className="text-xs text-primary">BAR {barPercentage}%</div>
       )}
     </div>
   </Link>

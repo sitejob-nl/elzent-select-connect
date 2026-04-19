@@ -4,14 +4,15 @@ import AppLayout from "@/components/AppLayout";
 import SectionCard from "@/components/SectionCard";
 import { Button } from "@/components/ui/button";
 import {
-  Sparkles, Check, ArrowLeft, MessageSquare, Heart, Eye,
-  Loader2, FileText, Sheet, Map, Lock, ChevronRight,
+  Sparkles, Check, ArrowLeft, Heart, Eye,
+  Loader2, FileText, Sheet, Image as ImageIcon, Lock, ChevronRight, MessageSquare,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProperty } from "@/hooks/useProperties";
 import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 import { useSubmitInterest, useInterestRequests } from "@/hooks/useInterest";
 import { useToast } from "@/hooks/use-toast";
+import { propertyTypeLabel } from "@/lib/taxonomy";
 
 const formatPrice = (price: number | null) => {
   if (!price) return "–";
@@ -93,43 +94,54 @@ const DetailPage = () => {
         </div>
 
         {/* Hero */}
-        <div className="relative rounded-xl overflow-hidden mb-8 h-64 sm:h-80 lg:h-96">
-          {property.image_url && (
-            <img src={property.image_url} alt={property.title} className="w-full h-full object-cover" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          <div className="absolute bottom-6 left-6 right-6">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              {isNew && (
-                <span className="px-2 py-1 bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-sm">Nieuw</span>
+        {(() => {
+          const heroSrc = property.image_url || property.images[0]?.url || null;
+          const thumbs = property.images.slice(0, 4);
+          const extra = Math.max(0, property.images.length - 4);
+          return (
+            <div className="relative rounded-xl overflow-hidden mb-8 h-64 sm:h-80 lg:h-96">
+              {heroSrc && (
+                <img src={heroSrc} alt={property.title} className="w-full h-full object-cover" />
               )}
-              {property.match_score > 0 && (
-                <span className="px-2 py-1 bg-white/20 text-white text-xs font-medium rounded-sm backdrop-blur-sm">{property.match_score}% Match</span>
-              )}
-              {property.property_type && (
-                <span className="px-2 py-1 bg-primary/80 text-white text-xs font-medium rounded-sm backdrop-blur-sm">{property.property_type}</span>
-              )}
-              {property.view_count > 0 && (
-                <span className="px-2 py-1 bg-white/10 text-white text-xs font-medium rounded-sm backdrop-blur-sm flex items-center gap-1">
-                  <Heart className="h-3 w-3" />{property.view_count} keer bekeken
-                </span>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute bottom-6 left-6 right-6">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  {isNew && (
+                    <span className="px-2 py-1 bg-primary text-white text-xs font-bold uppercase tracking-wider rounded-sm">Nieuw</span>
+                  )}
+                  {property.match_score > 0 && (
+                    <span className="px-2 py-1 bg-white/20 text-white text-xs font-medium rounded-sm backdrop-blur-sm">{property.match_score}% Match</span>
+                  )}
+                  {property.property_type && (
+                    <span className="px-2 py-1 bg-primary/80 text-white text-xs font-medium rounded-sm backdrop-blur-sm">{propertyTypeLabel(property.property_type)}</span>
+                  )}
+                  {property.view_count > 0 && (
+                    <span className="px-2 py-1 bg-white/10 text-white text-xs font-medium rounded-sm backdrop-blur-sm flex items-center gap-1">
+                      <Eye className="h-3 w-3" />{property.view_count} keer bekeken
+                    </span>
+                  )}
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-display font-bold text-white mb-1">{property.title}</h1>
+                <p className="text-gray-200">{property.location}</p>
+              </div>
+              {/* Thumbnail strip */}
+              {property.images.length > 1 && (
+                <div className="absolute top-4 right-4 flex gap-2">
+                  {thumbs.map((img) => (
+                    <div key={img.id} className="w-14 h-14 rounded-lg overflow-hidden border-2 border-white/40">
+                      <img src={img.url} alt={img.alt_text ?? ""} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                  {extra > 0 && (
+                    <div className="w-14 h-14 rounded-lg bg-black/50 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center text-white text-xs font-bold">
+                      +{extra}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-            <h1 className="text-3xl sm:text-4xl font-display font-bold text-white mb-1">{property.title}</h1>
-            <p className="text-gray-200">{property.location}</p>
-          </div>
-          {/* Thumbnail strip */}
-          {property.image_url && (
-            <div className="absolute top-4 right-4 flex gap-2">
-              <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-white/40">
-                <img src={property.image_url} alt="" className="w-full h-full object-cover" />
-              </div>
-              <div className="w-14 h-14 rounded-lg bg-black/50 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center text-white text-xs font-bold">
-                +8
-              </div>
-            </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Match Banner */}
         {property.match_score > 0 && (
@@ -151,13 +163,13 @@ const DetailPage = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
                 { label: "Investering", value: formatPrice(property.price) },
-                { label: "BAR", value: property.bar_percentage ? `${property.bar_percentage}%` : "–", green: true },
+                { label: "BAR", value: property.bar_percentage ? `${property.bar_percentage}%` : "–", highlight: true },
                 { label: "Huurinkomsten", value: rentalIncome ? formatCurrency(rentalIncome) : "–", sub: "per jaar" },
-                { label: "Eenheden", value: property.units?.toString() ?? "–", sub: property.property_type ?? undefined },
+                { label: "Eenheden", value: property.units?.toString() ?? "–", sub: property.property_type ? propertyTypeLabel(property.property_type) : undefined },
               ].map((s) => (
                 <div key={s.label} className="bg-card rounded-lg border border-border p-4 text-center">
                   <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{s.label}</div>
-                  <div className={`text-xl font-display font-bold ${s.green ? "text-emerald-600" : "text-foreground"}`}>{s.value}</div>
+                  <div className={`text-xl font-display font-bold ${s.highlight ? "text-primary" : "text-foreground"}`}>{s.value}</div>
                   {s.sub && <div className="text-[0.65rem] text-muted-foreground">{s.sub}</div>}
                 </div>
               ))}
@@ -182,14 +194,14 @@ const DetailPage = () => {
                     <div key={t.id} className="tl-item">
                       <div className={`tl-dot ${
                         t.is_active
-                          ? "bg-emerald-500 border-emerald-500"
+                          ? "bg-primary border-primary"
                           : "bg-card border-border"
                       }`} />
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-bold text-foreground">{t.step_title}</span>
                           {t.is_active && (
-                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded font-medium">
+                            <span className="px-1.5 py-0.5 bg-primary/15 text-primary text-xs rounded font-medium">
                               Nu mogelijk
                             </span>
                           )}
@@ -213,7 +225,7 @@ const DetailPage = () => {
             <SectionCard title="Kenmerken">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                 {[
-                  { label: "Type", value: property.property_type },
+                  { label: "Type", value: property.property_type ? propertyTypeLabel(property.property_type) : null },
                   { label: "Locatie", value: `${property.city}` },
                   { label: "Oppervlakte", value: property.surface_area ? `${property.surface_area.toLocaleString("nl-NL")} m²` : null },
                   { label: "Eenheden", value: property.units?.toString() },
@@ -246,14 +258,14 @@ const DetailPage = () => {
                     <>
                       <div className="flex justify-between py-2 border-b border-border mt-2">
                         <span className="text-muted-foreground">Bruto huurinkomsten (jaar)</span>
-                        <span className="font-medium text-emerald-600">{formatCurrency(rentalIncome)}</span>
+                        <span className="font-medium text-primary">{formatCurrency(rentalIncome)}</span>
                       </div>
                     </>
                   )}
                   {property.bar_percentage && (
-                    <div className="flex justify-between py-3 bg-emerald-50 -mx-6 px-6 rounded">
+                    <div className="flex justify-between py-3 bg-primary/5 -mx-6 px-6 rounded">
                       <span className="font-bold text-foreground">BAR</span>
-                      <span className="font-display font-bold text-emerald-600 text-lg">{property.bar_percentage}%</span>
+                      <span className="font-display font-bold text-primary text-lg">{property.bar_percentage}%</span>
                     </div>
                   )}
                 </div>
@@ -261,36 +273,59 @@ const DetailPage = () => {
             )}
 
             {/* Documenten */}
-            <SectionCard title="Documenten" noPadding>
-              <div className="divide-y divide-border">
-                {[
-                  { icon: FileText, color: "text-red-500", name: "Investment Memorandum", size: "PDF · 4.2 MB" },
-                  { icon: Sheet, color: "text-blue-500", name: "Financiële Prognose", size: "XLSX · 1.8 MB" },
-                  { icon: Map, color: "text-emerald-500", name: "Plattegronden", size: "PDF · 12.6 MB" },
-                ].map((doc) => (
-                  <div
-                    key={doc.name}
-                    className="px-6 py-4 flex items-center justify-between hover:bg-muted/50 cursor-pointer transition-colors"
-                    onClick={() => {
-                      if (hasInterest) {
-                        toast({ title: "Binnenkort beschikbaar", description: "U ontvangt de documenten per e-mail." });
-                      } else {
-                        toast({ title: "Toon eerst uw interesse", description: "Documenten worden beschikbaar na het tonen van interesse." });
-                      }
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <doc.icon className={`h-5 w-5 ${doc.color}`} />
-                      <div>
-                        <div className="text-sm font-medium text-foreground">{doc.name}</div>
-                        <div className="text-xs text-muted-foreground">{doc.size}</div>
+            {property.documents.length > 0 && (
+              <SectionCard title="Documenten" noPadding>
+                <div className="divide-y divide-border">
+                  {property.documents.map((doc) => {
+                    const type = (doc.file_type ?? "").toLowerCase();
+                    const Icon = type === "xlsx" || type === "xls" || type === "csv"
+                      ? Sheet
+                      : type === "jpg" || type === "jpeg" || type === "png" || type === "webp"
+                      ? ImageIcon
+                      : FileText;
+                    const iconColor = type === "pdf"
+                      ? "text-red-500"
+                      : type === "xlsx" || type === "xls" || type === "csv"
+                      ? "text-blue-500"
+                      : type === "docx" || type === "doc"
+                      ? "text-sky-600"
+                      : type === "jpg" || type === "jpeg" || type === "png" || type === "webp"
+                      ? "text-amber-500"
+                      : "text-muted-foreground";
+                    const sizeLabel = doc.file_size_kb
+                      ? `${doc.file_type.toUpperCase()} · ${(doc.file_size_kb / 1024).toFixed(1)} MB`
+                      : doc.file_type.toUpperCase();
+                    const locked = doc.requires_interest && !hasInterest;
+                    return (
+                      <div
+                        key={doc.id}
+                        className="px-6 py-4 flex items-center justify-between hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => {
+                          if (!doc.requires_interest) {
+                            window.open(doc.file_url, "_blank", "noopener,noreferrer");
+                            return;
+                          }
+                          if (hasInterest) {
+                            toast({ title: "Binnenkort beschikbaar", description: "U ontvangt de documenten per e-mail." });
+                          } else {
+                            toast({ title: "Toon eerst uw interesse", description: "Documenten worden beschikbaar na het tonen van interesse." });
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className={`h-5 w-5 ${iconColor}`} />
+                          <div>
+                            <div className="text-sm font-medium text-foreground">{doc.name}</div>
+                            <div className="text-xs text-muted-foreground">{sizeLabel}</div>
+                          </div>
+                        </div>
+                        {locked && <Lock className="h-4 w-4 text-muted-foreground" />}
                       </div>
-                    </div>
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
+                    );
+                  })}
+                </div>
+              </SectionCard>
+            )}
 
             {/* Tags */}
             {property.tags.length > 0 && (
@@ -357,7 +392,7 @@ const DetailPage = () => {
                 <h4 className="font-display font-bold text-foreground mb-4">Status</h4>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0" />
+                    <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0" />
                     <div>
                       <div className="text-sm font-medium text-foreground">Interesse fase</div>
                       <div className="text-xs text-muted-foreground">Huidige fase</div>
@@ -372,6 +407,30 @@ const DetailPage = () => {
                 </div>
               </div>
 
+              {/* Contact */}
+              {property.contact && (
+                <div className="bg-card rounded-lg border border-border p-6">
+                  <h4 className="font-display font-bold text-foreground mb-2">Vragen?</h4>
+                  <p className="text-sm text-muted-foreground mb-4">Neem direct contact op met ons team.</p>
+                  <div className="flex items-center">
+                    <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-primary font-display text-sm mr-3">
+                      {property.contact.full_name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "RE"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{property.contact.full_name}</p>
+                      {property.contact.email && (
+                        <a
+                          href={`mailto:${property.contact.email}`}
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <MessageSquare className="h-3 w-3" /> Stuur bericht
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex gap-2">
                 <button
@@ -383,21 +442,6 @@ const DetailPage = () => {
                   <Heart className={`h-4 w-4 ${isFav ? "fill-red-400" : ""}`} />
                   {isFav ? "Opgeslagen" : "Opslaan"}
                 </button>
-              </div>
-
-              {/* Contact card */}
-              <div className="bg-card rounded-lg border border-border p-6">
-                <h4 className="font-display font-bold text-foreground mb-2">Vragen?</h4>
-                <p className="text-sm text-muted-foreground mb-4">Neem direct contact op met ons team.</p>
-                <div className="flex items-center">
-                  <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-primary font-display text-sm mr-3">WB</div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Wessel Bollen</p>
-                    <button className="text-xs text-primary hover:underline flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" /> Stuur bericht
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* Back button */}
