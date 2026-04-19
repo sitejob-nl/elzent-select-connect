@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, ImageOff, X } from "lucide-react";
 import {
   Carousel,
@@ -8,7 +8,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContentBare, DialogTitle } from "@/components/ui/dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { cn } from "@/lib/utils";
 import { propertyTypeLabel } from "@/lib/taxonomy";
@@ -31,6 +31,10 @@ type Props = {
   propertyType: string | null;
   viewCount: number;
 };
+
+// Module-level constant so the carousel's `useEffect` dep-array on `opts`
+// doesn't re-run (and re-init Embla) on every render.
+const CAROUSEL_OPTS = { loop: false } as const;
 
 /**
  * Hero photo gallery with carousel, thumbnail strip and lightbox.
@@ -72,6 +76,28 @@ const PropertyPhotoGallery = ({
   const [lightboxApi, setLightboxApi] = useState<CarouselApi | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // Track whether the hero carousel is currently being dragged so a
+  // swipe-ends-in-click (a touchend fired after a drag) doesn't open the
+  // lightbox. Embla fires `scroll` continuously while dragging and `settle`
+  // when the drag completes — we flip this ref on pointerDown and set it to
+  // true as soon as any scroll happens during that gesture.
+  const draggingRef = useRef(false);
+  useEffect(() => {
+    if (!heroApi) return;
+    const onPointerDown = () => {
+      draggingRef.current = false;
+    };
+    const onScroll = () => {
+      draggingRef.current = true;
+    };
+    heroApi.on("pointerDown", onPointerDown);
+    heroApi.on("scroll", onScroll);
+    return () => {
+      heroApi.off("pointerDown", onPointerDown);
+      heroApi.off("scroll", onScroll);
+    };
+  }, [heroApi]);
 
   // Track the active slide from the hero carousel.
   useEffect(() => {
@@ -122,6 +148,12 @@ const PropertyPhotoGallery = ({
     heroApi?.scrollTo(index);
   };
 
+  const openLightboxIfNotDragging = () => {
+    if (!draggingRef.current) {
+      setLightboxOpen(true);
+    }
+  };
+
   // Empty state: no property_images, no legacy image_url.
   if (total === 0) {
     return (
@@ -135,95 +167,104 @@ const PropertyPhotoGallery = ({
   return (
     <>
       <div className="mb-8">
-        <Carousel
-          setApi={setHeroApi}
-          opts={{ loop: false }}
-          className="relative rounded-xl overflow-hidden h-64 sm:h-80 lg:h-96"
-          aria-label={`Afbeeldingen van ${title}`}
-        >
-          <CarouselContent className="ml-0 h-64 sm:h-80 lg:h-96">
-            {slides.map((img, idx) => (
-              <CarouselItem key={img.id} className="pl-0 relative h-64 sm:h-80 lg:h-96">
-                {/* Clickable image area — opens the lightbox. */}
-                <button
-                  type="button"
-                  onClick={() => setLightboxOpen(true)}
-                  aria-label={`Open afbeelding ${idx + 1} van ${total} op volledig scherm`}
-                  className="absolute inset-0 w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <img
-                    src={img.url}
-                    alt={img.alt_text ?? `${title} — afbeelding ${idx + 1}`}
-                    className="w-full h-full object-cover"
-                    draggable={false}
-                  />
-                </button>
+        <div className="relative rounded-xl overflow-hidden h-64 sm:h-80 lg:h-96">
+          <Carousel
+            setApi={setHeroApi}
+            opts={CAROUSEL_OPTS}
+            className="h-64 sm:h-80 lg:h-96"
+            aria-label={`Afbeeldingen van ${title}`}
+          >
+            <CarouselContent className="ml-0 h-64 sm:h-80 lg:h-96">
+              {slides.map((img, idx) => (
+                <CarouselItem key={img.id} className="pl-0 relative h-64 sm:h-80 lg:h-96">
+                  {/* Clickable image area — opens the lightbox (unless this
+                      click is the tail end of a swipe gesture). */}
+                  <button
+                    type="button"
+                    onClick={openLightboxIfNotDragging}
+                    aria-label={`Open afbeelding ${idx + 1} van ${total} op volledig scherm`}
+                    className="absolute inset-0 w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.alt_text ?? `${title} — afbeelding ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                      loading={idx === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                      {...(idx === 0 ? { fetchpriority: "high" as const } : {})}
+                    />
+                  </button>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
 
-                {/* Overlay (badges + title + location) only on the hero slide for
-                    a cleaner look on subsequent frames. */}
-                {idx === 0 && (
-                  <>
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                    <div
-                      className="absolute bottom-6 left-6 right-6"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        {isNew && (
-                          <span className="px-2 py-1 bg-primary text-white text-xs font-bold uppercase tracking-wider rounded-sm">
-                            Nieuw
-                          </span>
-                        )}
-                        {matchScore > 0 && (
-                          <span className="px-2 py-1 bg-white/20 text-white text-xs font-medium rounded-sm backdrop-blur-sm">
-                            {matchScore}% Match
-                          </span>
-                        )}
-                        {propertyType && (
-                          <span className="px-2 py-1 bg-primary/80 text-white text-xs font-medium rounded-sm backdrop-blur-sm">
-                            {propertyTypeLabel(propertyType)}
-                          </span>
-                        )}
-                        {viewCount > 0 && (
-                          <span className="px-2 py-1 bg-white/10 text-white text-xs font-medium rounded-sm backdrop-blur-sm flex items-center gap-1">
-                            <Eye className="h-3 w-3" />
-                            {viewCount} keer bekeken
-                          </span>
-                        )}
-                      </div>
-                      <h1 className="text-3xl sm:text-4xl font-display font-bold text-white mb-1">
-                        {title}
-                      </h1>
-                      <p className="text-gray-200">{location}</p>
-                    </div>
-                  </>
-                )}
-              </CarouselItem>
-            ))}
-          </CarouselContent>
+            {hasMultiple && (
+              <>
+                <CarouselPrevious
+                  aria-label="Vorige"
+                  className="hidden md:inline-flex left-4 h-10 w-10 bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                />
+                <CarouselNext
+                  aria-label="Volgende"
+                  className="hidden md:inline-flex right-4 h-10 w-10 bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                />
+              </>
+            )}
+          </Carousel>
 
+          {/* Gradient — below the overlay content, above the image. Never
+              intercepts pointer events so swipes pass through to the image. */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+          {/* Persistent overlay (badges + title + location). Rendered outside
+              the Carousel so it stays visible on every slide. `pointer-events-none`
+              lets the swipe/tap reach the image-button beneath it. */}
+          <div className="pointer-events-none absolute bottom-6 left-6 right-6">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {isNew && (
+                <span className="px-2 py-1 bg-primary text-white text-xs font-bold uppercase tracking-wider rounded-sm">
+                  Nieuw
+                </span>
+              )}
+              {matchScore > 0 && (
+                <span className="px-2 py-1 bg-white/20 text-white text-xs font-medium rounded-sm backdrop-blur-sm">
+                  {matchScore}% Match
+                </span>
+              )}
+              {propertyType && (
+                <span className="px-2 py-1 bg-primary/80 text-white text-xs font-medium rounded-sm backdrop-blur-sm">
+                  {propertyTypeLabel(propertyType)}
+                </span>
+              )}
+              {viewCount > 0 && (
+                <span className="px-2 py-1 bg-white/10 text-white text-xs font-medium rounded-sm backdrop-blur-sm flex items-center gap-1">
+                  <Eye className="h-3 w-3" />
+                  {viewCount} keer bekeken
+                </span>
+              )}
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-display font-bold text-white mb-1">
+              {title}
+            </h1>
+            <p className="text-gray-200">{location}</p>
+          </div>
+
+          {/* Slide counter */}
           {hasMultiple && (
-            <>
-              <CarouselPrevious
-                aria-label="Vorige"
-                className="hidden md:inline-flex left-4 h-10 w-10 bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-primary hover:text-white hover:border-primary transition-colors"
-              />
-              <CarouselNext
-                aria-label="Volgende"
-                className="hidden md:inline-flex right-4 h-10 w-10 bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-primary hover:text-white hover:border-primary transition-colors"
-              />
-
-              {/* Slide counter */}
-              <div className="pointer-events-none absolute bottom-4 right-4 px-2 py-1 rounded-sm bg-black/50 text-white text-xs font-body backdrop-blur-sm">
-                {selectedIndex + 1} / {total}
-              </div>
-            </>
+            <div
+              className="pointer-events-none absolute bottom-4 right-4 px-2 py-1 rounded-sm bg-black/50 text-white text-xs font-body backdrop-blur-sm"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {selectedIndex + 1} / {total}
+            </div>
           )}
-        </Carousel>
+        </div>
 
         {/* Thumbnail strip — only when there are 2+ images. */}
         {hasMultiple && (
-          <div className="mt-3 overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:thin]">
+          <div className="mt-3 overflow-x-auto snap-x snap-mandatory [scrollbar-width:thin]">
             <div className="flex gap-2 pb-1">
               {slides.map((img, idx) => {
                 const active = idx === selectedIndex;
@@ -247,6 +288,8 @@ const PropertyPhotoGallery = ({
                       alt={img.alt_text ?? `${title} — thumbnail ${idx + 1}`}
                       className="w-full h-full object-cover"
                       draggable={false}
+                      loading="lazy"
+                      decoding="async"
                     />
                   </button>
                 );
@@ -256,10 +299,12 @@ const PropertyPhotoGallery = ({
         )}
       </div>
 
-      {/* Lightbox */}
+      {/* Lightbox. `DialogContentBare` omits shadcn's default close button so we
+          don't need a `[&>button]:hidden` selector (which would also hide the
+          carousel arrow buttons rendered inside). */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-        <DialogContent
-          className="max-w-[96vw] w-[96vw] h-[92vh] p-0 bg-black/95 border-0 sm:rounded-lg overflow-hidden [&>button]:hidden"
+        <DialogContentBare
+          className="max-w-[96vw] w-[96vw] h-[92vh] p-0 bg-black/95 border-0 sm:rounded-lg overflow-hidden"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <VisuallyHidden.Root>
@@ -268,7 +313,7 @@ const PropertyPhotoGallery = ({
           <div className="relative w-full h-full flex items-center justify-center">
             <Carousel
               setApi={setLightboxApi}
-              opts={{ loop: false }}
+              opts={CAROUSEL_OPTS}
               className="w-full h-full"
               aria-label={`Afbeeldingen van ${title} — volledig scherm`}
             >
@@ -283,6 +328,8 @@ const PropertyPhotoGallery = ({
                       alt={img.alt_text ?? `${title} — afbeelding ${idx + 1}`}
                       className="max-w-full max-h-full object-contain select-none"
                       draggable={false}
+                      loading="lazy"
+                      decoding="async"
                     />
                   </CarouselItem>
                 ))}
@@ -302,7 +349,8 @@ const PropertyPhotoGallery = ({
               )}
             </Carousel>
 
-            {/* Close button (replaces shadcn's default, which we hid) */}
+            {/* Custom close button (replaces shadcn's default, which
+                DialogContentBare omits entirely). */}
             <button
               type="button"
               onClick={() => setLightboxOpen(false)}
@@ -314,12 +362,16 @@ const PropertyPhotoGallery = ({
 
             {/* Slide counter — only when multiple */}
             {hasMultiple && (
-              <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 text-white text-xs font-body backdrop-blur-sm">
+              <div
+                className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 text-white text-xs font-body backdrop-blur-sm"
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 Afbeelding {selectedIndex + 1} van {total}
               </div>
             )}
           </div>
-        </DialogContent>
+        </DialogContentBare>
       </Dialog>
     </>
   );

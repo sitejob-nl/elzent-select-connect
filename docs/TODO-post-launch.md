@@ -31,3 +31,38 @@ tracked so we don't lose them.
 - **Named export** — `PropertyImageManager` currently uses `export
   default`. Convert to a named export to match the rest of the
   components dir.
+
+## Task 2 (Photo gallery) follow-ups
+
+Items deferred from the Task 2 code review on commit `53cbf00`.
+Critical + important issues are fixed in the follow-up commit; the
+items below are defer-to-later polish.
+
+- **Review #4** — `stopPropagation` on the hero overlay: resolved by
+  Fix #3 (overlay is now `pointer-events-none` and lives outside the
+  Carousel, so clicks/swipes pass through to the image-button).
+- **Review #5** — Effect-based hero ↔ lightbox sync could be refactored
+  to an imperative `scrollTo` inside `onOpenChange`. Works today;
+  optimize later.
+- **Review #7** — Prop surface: refactor `PropertyPhotoGallery` to
+  accept `overlay: ReactNode` instead of
+  `isNew / matchScore / propertyType / viewCount`. Do this before a
+  second consumer appears.
+- **Review #10** — Verify via React DevTools that the lightbox Carousel
+  doesn't mount before first open (Radix Portal + DialogContent
+  should handle this, but confirm).
+- **A11y minor** — Add a `<DialogDescription>` inside `VisuallyHidden`
+  to silence the Radix warning and give SR users instructions
+  ("Gebruik pijltjestoetsen om te navigeren. Druk op Escape om te
+  sluiten.").
+- **A11y minor** — Hero image inside `<button>` — add
+  `aria-hidden="true"` on the inner `<img>` to avoid screen-reader
+  double-reads (image alt + button label).
+- **DRY minor** — Hero height `h-64 sm:h-80 lg:h-96` is duplicated
+  across the container, Carousel, CarouselContent and CarouselItem;
+  extract to a local constant.
+- **UX minor** — `onError` handler on gallery `<img>`s to render a
+  graceful fallback icon when an upload URL 404s.
+- **A11y minor** — On lightbox open, `tabIndex={-1}` + `ref.focus()` on
+  the carousel region for nicer keyboard UX (currently
+  `onOpenAutoFocus` is prevented entirely).
