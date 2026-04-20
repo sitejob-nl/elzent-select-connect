@@ -23,8 +23,16 @@ dist-ssr
 qa-setup*.mjs
 qa-smoke.*
 qa-final-*.ts
+qa-full.*
+qa-deep.*
 pw-final-*.ts
 .env.test
+
+# Playwright MCP cache
+.playwright-mcp/
+
+# Root-level QA/dev screenshots (qa-screenshots/ already ignored)
+/*.png
 
 # Claude Code local settings (may contain secrets)
 .claude/
