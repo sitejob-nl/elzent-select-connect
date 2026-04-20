@@ -1,7 +1,14 @@
 // Shared email-send helper.
-// Loads a DB template, renders {{placeholders}}, POSTs to Resend, and logs
-// every attempt to public.email_logs. Callers must pass a service-role
-// Supabase client so the insert/update bypasses RLS on email_logs.
+// Renders {{placeholders}}, POSTs to Resend, and logs every attempt to
+// public.email_logs. Callers must pass a service-role Supabase client so
+// the insert/update bypasses RLS on email_logs.
+//
+// Two entry points:
+//   - sendTemplatedEmail: look up a template row by slug, then delegate.
+//     This is the happy path used by production senders.
+//   - sendRawEmail:      send arbitrary subject/html (possibly still
+//     containing {{vars}}) without a DB template. Used by the admin
+//     "send test email" editor to preview unsaved content.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -14,6 +21,22 @@ export interface SendTemplatedEmailArgs {
   to: string;
   toProfileId?: string | null;
   variables: Record<string, string | number | null | undefined>;
+}
+
+export interface SendRawEmailArgs {
+  supabase: SupabaseClient;
+  to: string;
+  subject: string; // may still contain {{vars}}
+  html: string;    // may still contain {{vars}}
+  variables: Record<string, string | number | null | undefined>;
+  /** Slug to record on email_logs.template_slug for audit trails. Optional. */
+  templateSlug?: string | null;
+  toProfileId?: string | null;
+  /**
+   * If true, prefixes the rendered subject with "[TEST] ". Used by the
+   * admin test-send path so admins can distinguish test rows in the log.
+   */
+  markAsTest?: boolean;
 }
 
 export interface SendResult {
@@ -40,60 +63,26 @@ export function renderTemplate(template: string, vars: Record<string, unknown>):
 }
 
 /**
- * Send a transactional email using a DB-backed template.
- *
- * Flow:
- * 1. Load template row by slug → if missing, log failed + return.
- * 2. Render subject + html via {{var}} substitution.
- * 3. Insert email_logs row with status='queued'.
- * 4. POST to Resend (if RESEND_API_KEY set).
- * 5. Update log row: sent (with resend_id + sent_at) OR failed (error_message).
+ * Send arbitrary subject/html via Resend + log to email_logs. Does the
+ * {{var}} rendering so callers can pass unsaved template content.
  *
  * Always returns a result object — never throws for expected failures.
  */
-export async function sendTemplatedEmail(args: SendTemplatedEmailArgs): Promise<SendResult> {
-  const { supabase, templateSlug, to, toProfileId, variables } = args;
+export async function sendRawEmail(args: SendRawEmailArgs): Promise<SendResult> {
+  const { supabase, to, subject, html, variables, toProfileId, markAsTest } = args;
+  const templateSlug = args.templateSlug ?? null;
 
-  // 1. Load template
-  const { data: template, error: tplErr } = await supabase
-    .from("email_templates")
-    .select("slug, subject, html")
-    .eq("slug", templateSlug)
-    .maybeSingle();
+  const renderedSubjectRaw = renderTemplate(subject, variables as Record<string, unknown>);
+  const renderedSubject = markAsTest ? `[TEST] ${renderedSubjectRaw}` : renderedSubjectRaw;
+  const renderedHtml = renderTemplate(html, variables as Record<string, unknown>);
 
-  if (tplErr || !template) {
-    const { data: failedLog } = await supabase
-      .from("email_logs")
-      .insert({
-        to_email: to,
-        to_profile_id: toProfileId ?? null,
-        template_slug: null,
-        subject: `[template_not_found: ${templateSlug}]`,
-        variables_used: variables ?? {},
-        status: "failed",
-        error_message: `template_not_found: ${templateSlug}`,
-      })
-      .select("id")
-      .single();
-
-    return {
-      ok: false,
-      logId: failedLog?.id ?? "",
-      error: `template_not_found: ${templateSlug}`,
-    };
-  }
-
-  // 2. Render
-  const renderedSubject = renderTemplate(template.subject, variables as Record<string, unknown>);
-  const renderedHtml = renderTemplate(template.html, variables as Record<string, unknown>);
-
-  // 3. Queue log row
+  // 1. Queue log row
   const { data: queuedLog, error: logErr } = await supabase
     .from("email_logs")
     .insert({
       to_email: to,
       to_profile_id: toProfileId ?? null,
-      template_slug: template.slug,
+      template_slug: templateSlug,
       subject: renderedSubject,
       variables_used: variables ?? {},
       status: "queued",
@@ -112,7 +101,7 @@ export async function sendTemplatedEmail(args: SendTemplatedEmailArgs): Promise<
 
   const logId: string = queuedLog.id;
 
-  // 4. Send via Resend
+  // 2. Send via Resend
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) {
     await supabase
@@ -175,7 +164,7 @@ export async function sendTemplatedEmail(args: SendTemplatedEmailArgs): Promise<
     sendErr = err instanceof Error ? err.message : String(err);
   }
 
-  // 5. Update log row with final status
+  // 3. Update log row with final status
   if (sendOk) {
     await supabase
       .from("email_logs")
@@ -198,4 +187,53 @@ export async function sendTemplatedEmail(args: SendTemplatedEmailArgs): Promise<
     .eq("id", logId);
 
   return { ok: false, logId, error: sendErr ?? "unknown_error" };
+}
+
+/**
+ * Send a transactional email using a DB-backed template.
+ *
+ * Flow:
+ * 1. Load template row by slug → if missing, log failed + return.
+ * 2. Delegate to sendRawEmail which renders vars, logs, POSTs to Resend.
+ */
+export async function sendTemplatedEmail(args: SendTemplatedEmailArgs): Promise<SendResult> {
+  const { supabase, templateSlug, to, toProfileId, variables } = args;
+
+  const { data: template, error: tplErr } = await supabase
+    .from("email_templates")
+    .select("slug, subject, html")
+    .eq("slug", templateSlug)
+    .maybeSingle();
+
+  if (tplErr || !template) {
+    const { data: failedLog } = await supabase
+      .from("email_logs")
+      .insert({
+        to_email: to,
+        to_profile_id: toProfileId ?? null,
+        template_slug: null,
+        subject: `[template_not_found: ${templateSlug}]`,
+        variables_used: variables ?? {},
+        status: "failed",
+        error_message: `template_not_found: ${templateSlug}`,
+      })
+      .select("id")
+      .single();
+
+    return {
+      ok: false,
+      logId: failedLog?.id ?? "",
+      error: `template_not_found: ${templateSlug}`,
+    };
+  }
+
+  return sendRawEmail({
+    supabase,
+    to,
+    subject: template.subject,
+    html: template.html,
+    variables,
+    templateSlug: template.slug,
+    toProfileId,
+  });
 }

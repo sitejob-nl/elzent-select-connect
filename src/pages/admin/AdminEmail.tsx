@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Mail, Search } from "lucide-react";
 import AdminLayout from "@/components/AdminLayout";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -53,9 +53,17 @@ export default function AdminEmail() {
   return (
     <AdminLayout>
       <div className="p-6 lg:p-8 max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-foreground mb-1">E-mail log</h1>
-          <p className="text-muted-foreground">Alle uitgaande mails, nieuwste eerst.</p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-foreground mb-1">E-mail log</h1>
+            <p className="text-muted-foreground">Alle uitgaande mails, nieuwste eerst.</p>
+          </div>
+          <Link
+            to="/admin/email/templates"
+            className="inline-flex items-center h-10 px-4 rounded-lg border border-input bg-background text-foreground text-sm font-medium hover:bg-muted transition-colors whitespace-nowrap"
+          >
+            Beheer templates →
+          </Link>
         </div>
 
         {/* Filters */}
