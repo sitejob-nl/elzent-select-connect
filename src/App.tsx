@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import LoginPage from "./pages/LoginPage";
+import WachtwoordInstellen from "./pages/WachtwoordInstellen";
 import DashboardPage from "./pages/DashboardPage";
 import AanbodPage from "./pages/AanbodPage";
 import DetailPage from "./pages/DetailPage";
@@ -36,6 +37,7 @@ const App = () => (
           <ErrorBoundary>
           <Routes>
             <Route path="/" element={<LoginPage />} />
+            <Route path="/wachtwoord-instellen" element={<WachtwoordInstellen />} />
             {/* Client routes */}
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/aanbod" element={<ProtectedRoute><AanbodPage /></ProtectedRoute>} />

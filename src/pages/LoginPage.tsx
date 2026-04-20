@@ -5,6 +5,7 @@ import { Mail, Lock, UserPlus, Loader2, ShieldCheck, Building2, ArrowLeft, User,
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useSubmitAccessRequest } from "@/hooks/useAccessRequest";
+import { supabase } from "@/integrations/supabase/client";
 import heroImg from "@/assets/hero-building.jpg";
 
 const LoginPage = () => {
@@ -20,6 +21,9 @@ const LoginPage = () => {
   const [accessCompany, setAccessCompany] = useState("");
   const [accessMessage, setAccessMessage] = useState("");
   const submitAccess = useSubmitAccessRequest();
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     if (session && !authLoading && profile) {
@@ -44,6 +48,28 @@ const LoginPage = () => {
       setIsLoading(false);
       return;
     }
+  };
+
+  const handleResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+    try {
+      await supabase.functions.invoke("request-password-reset", {
+        body: { email: resetEmail.trim().toLowerCase() },
+      });
+    } catch (err) {
+      // Swallow errors — we always show a generic success to avoid
+      // leaking whether the email exists.
+      console.error("request-password-reset invoke failed", err);
+    }
+    toast({
+      title: "Herstel-link aangevraagd",
+      description:
+        "Als dit e-mailadres bij ons bekend is, sturen wij u een herstel-link.",
+    });
+    setShowResetForm(false);
+    setResetEmail("");
+    setResetLoading(false);
   };
 
   const handleAccessRequest = async (e: React.FormEvent) => {
@@ -129,7 +155,10 @@ const LoginPage = () => {
               <button
                 type="button"
                 className="text-sm font-medium text-primary hover:opacity-80"
-                onClick={() => toast({ title: "Herstelmail verstuurd", description: "Controleer uw inbox." })}
+                onClick={() => {
+                  setShowResetForm(true);
+                  setResetEmail(email);
+                }}
               >
                 Wachtwoord vergeten?
               </button>
@@ -152,6 +181,53 @@ const LoginPage = () => {
               )}
             </Button>
           </form>
+
+          {showResetForm && (
+            <div className="mt-6 p-4 rounded-md border border-border bg-muted/30">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display text-sm font-semibold text-foreground">Wachtwoord herstellen</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResetForm(false);
+                    setResetEmail("");
+                  }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Sluiten"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Vul uw e-mailadres in. Als het bij ons bekend is, sturen wij een herstel-link.
+              </p>
+              <form onSubmit={handleResetRequest} className="space-y-3">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="naam@voorbeeld.nl"
+                    required
+                    className="w-full py-2.5 pl-10 pr-4 rounded-md border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  variant="gold"
+                  className="w-full"
+                  disabled={resetLoading}
+                >
+                  {resetLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Bezig...</>
+                  ) : (
+                    "Verstuur herstelmail"
+                  )}
+                </Button>
+              </form>
+            </div>
+          )}
 
           {!showAccessForm ? (
             <div className="mt-8 pt-6 border-t border-border text-center">

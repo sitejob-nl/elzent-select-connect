@@ -1,9 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendTemplatedEmail } from "../_shared/email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+// TODO: move to env var once we run multiple environments (staging etc.).
+const APP_URL = "https://app.resid.nl";
 
 interface ApprovePayload {
   access_request_id: string;
@@ -100,20 +104,27 @@ Deno.serve(async (req: Request) => {
     const fullName = accessRequest.name ?? null;
     const company = accessRequest.company ?? null;
 
-    // Invite user by email. Supabase sends the standard invite email
-    // containing a link that takes the user to a password-set page.
-    // The handle_new_user() trigger auto-creates a profiles row with role='client'.
-    const { data: inviteData, error: inviteError } =
-      await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        data: {
-          full_name: fullName,
-          company: company,
+    // Generate an invite link via Supabase admin API. This both creates
+    // the auth.users row AND returns a one-time hashed_token. We embed
+    // that token in our own /wachtwoord-instellen URL and send it via
+    // Resend using the editable `invite` template — bypassing Supabase's
+    // built-in invite email.
+    const { data: linkData, error: linkError } =
+      await supabaseAdmin.auth.admin.generateLink({
+        type: "invite",
+        email,
+        options: {
+          data: {
+            full_name: fullName,
+            company: company,
+          },
+          redirectTo: `${APP_URL}/wachtwoord-instellen`,
         },
       });
 
-    if (inviteError || !inviteData?.user) {
+    if (linkError || !linkData?.user || !linkData?.properties?.hashed_token) {
       // Detect "email already exists" style errors and surface a 409.
-      const msg = inviteError?.message?.toLowerCase() ?? "";
+      const msg = linkError?.message?.toLowerCase() ?? "";
       const alreadyExists =
         msg.includes("already") ||
         msg.includes("registered") ||
@@ -132,11 +143,11 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      console.error("inviteUserByEmail failed", inviteError);
+      console.error("generateLink(invite) failed", linkError);
       return new Response(
         JSON.stringify({
           error:
-            inviteError?.message ||
+            linkError?.message ||
             "Kon gebruiker niet uitnodigen. Probeer het opnieuw.",
         }),
         {
@@ -146,7 +157,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const newUserId = inviteData.user.id;
+    const newUserId = linkData.user.id;
+    const hashedToken = linkData.properties.hashed_token;
+    const acceptUrl = `${APP_URL}/wachtwoord-instellen?token=${encodeURIComponent(hashedToken)}&type=invite`;
 
     // Ensure the profile row exists and has the company + full_name set.
     // handle_new_user() trigger already inserts (id, email, full_name, role='client')
@@ -168,6 +181,25 @@ Deno.serve(async (req: Request) => {
     if (profileError) {
       console.error("profiles upsert failed", profileError);
       // Non-fatal: the trigger likely already inserted the row. Continue.
+    }
+
+    // Send the custom invite email via Resend + the admin-editable template.
+    // Non-fatal if this fails — user was created, admin can resend from
+    // the template editor's test-send. We still mark the request approved.
+    const sendResult = await sendTemplatedEmail({
+      supabase: supabaseAdmin,
+      templateSlug: "invite",
+      to: email,
+      toProfileId: newUserId,
+      variables: {
+        user_name: fullName || "Beleggersklant",
+        accept_url: acceptUrl,
+        app_url: APP_URL,
+      },
+    });
+
+    if (!sendResult.ok) {
+      console.error("[approve-access-request] invite email send failed", sendResult.error);
     }
 
     // Mark access request as approved
