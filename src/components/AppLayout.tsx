@@ -9,7 +9,14 @@ const navItems = [
   { label: "Mijn Profiel", path: "/profiel", icon: User },
 ];
 
-const AppLayout = ({ children }: { children: React.ReactNode }) => {
+interface AppLayoutProps {
+  children: React.ReactNode;
+  /** Hide both the top and bottom nav — used during onboarding so the user
+   *  finishes the profile step before roaming the app. */
+  hideNav?: boolean;
+}
+
+const AppLayout = ({ children, hideNav = false }: AppLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
@@ -29,37 +36,45 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div
+      className={`min-h-screen bg-background ${
+        hideNav ? "" : "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0"
+      }`}
+    >
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/dashboard" className="flex items-center gap-2">
+          <Link to={hideNav ? "/profiel" : "/dashboard"} className="flex items-center gap-2">
             <span className="font-display text-xl font-bold text-primary">Resid</span>
             <span className="hidden sm:inline text-[10px] font-body tracking-wider text-muted-foreground/60 ml-1">powered by Elzent Estates</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
-            {navItems.map((item) => {
-              const isActive = isActivePath(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`nav-link inline-flex items-center px-1 pt-1 pb-[18px] border-b-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "active text-primary border-primary"
-                      : "border-transparent text-muted-foreground hover:text-primary"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          {!hideNav && (
+            <nav className="hidden md:flex items-center gap-8">
+              {navItems.map((item) => {
+                const isActive = isActivePath(item.path);
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`nav-link inline-flex items-center px-1 pt-1 pb-[18px] border-b-2 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "active text-primary border-primary"
+                        : "border-transparent text-muted-foreground hover:text-primary"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
 
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center cursor-pointer" onClick={() => navigate("/profiel")}>
-              <span className="text-xs font-bold text-primary-foreground font-display">{initials}</span>
-            </div>
+            {!hideNav && (
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center cursor-pointer" onClick={() => navigate("/profiel")}>
+                <span className="text-xs font-bold text-primary-foreground font-display">{initials}</span>
+              </div>
+            )}
             <button
               onClick={handleSignOut}
               className="p-2 rounded-full hover:bg-muted transition-colors"
@@ -74,25 +89,27 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <main>{children}</main>
 
       {/* Mobile bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-md md:hidden pb-[env(safe-area-inset-bottom)]">
-        <div className="flex items-center justify-around h-16">
-          {navItems.map((item) => {
-            const isActive = isActivePath(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="text-[10px] font-body font-medium">{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {!hideNav && (
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-md md:hidden pb-[env(safe-area-inset-bottom)]">
+          <div className="flex items-center justify-around h-16">
+            {navItems.map((item) => {
+              const isActive = isActivePath(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span className="text-[10px] font-body font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </div>
   );
 };

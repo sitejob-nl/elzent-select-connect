@@ -23,7 +23,7 @@ export function usePreferences() {
 }
 
 export function useSavePreferences() {
-  const { user } = useAuth();
+  const { user, refreshPreferences } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -49,9 +49,10 @@ export function useSavePreferences() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["preferences"] });
       queryClient.invalidateQueries({ queryKey: ["properties"] }); // match scores may change
+      await refreshPreferences(); // flip hasPreferences → true so onboarding guard releases
     },
   });
 }

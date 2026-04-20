@@ -32,7 +32,7 @@ export function useUpsertProperty() {
       property_type?: string | null;
       units?: number | null;
       surface_area?: number | null;
-      bar_percentage?: number | null;
+      rental_income_annual?: number | null;
       status: string;
       image_url?: string | null;
       tags?: string[];
@@ -261,23 +261,17 @@ export function useAdminStats() {
     queryKey: ["admin-stats"],
     queryFn: async () => {
       const [properties, clients, leads, interests] = await Promise.all([
-        supabase.from("properties").select("bar_percentage, status", { count: "exact" }).eq("status", "published").is("deleted_at", null),
+        supabase.from("properties").select("id", { count: "exact" }).eq("status", "published").is("deleted_at", null),
         supabase.from("profiles").select("id", { count: "exact" }).eq("role", "client").is("deleted_at", null),
         supabase.from("leads").select("id", { count: "exact" }).eq("status", "new"),
         supabase.from("interest_requests").select("id", { count: "exact" }).eq("status", "pending"),
       ]);
-
-      const withBar = properties.data?.filter((p) => p.bar_percentage) ?? [];
-      const avgBar = withBar.length > 0
-        ? withBar.reduce((s, p) => s + (p.bar_percentage ?? 0), 0) / withBar.length
-        : 0;
 
       return {
         publishedCount: properties.count ?? 0,
         activeClients: clients.count ?? 0,
         newLeads: leads.count ?? 0,
         pendingInterests: interests.count ?? 0,
-        avgBar: avgBar.toFixed(1),
       };
     },
   });

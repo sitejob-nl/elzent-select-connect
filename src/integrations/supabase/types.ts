@@ -22,6 +22,7 @@ export type Database = {
           id: string
           message: string | null
           name: string
+          phone: string | null
           reviewed_by: string | null
           status: string
           updated_at: string
@@ -33,6 +34,7 @@ export type Database = {
           id?: string
           message?: string | null
           name: string
+          phone?: string | null
           reviewed_by?: string | null
           status?: string
           updated_at?: string
@@ -44,6 +46,7 @@ export type Database = {
           id?: string
           message?: string | null
           name?: string
+          phone?: string | null
           reviewed_by?: string | null
           status?: string
           updated_at?: string
@@ -52,6 +55,35 @@ export type Database = {
           {
             foreignKeyName: "access_requests_reviewed_by_fkey"
             columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_regions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_regions_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -109,11 +141,8 @@ export type Database = {
       }
       client_preferences: {
         Row: {
-          budget_max: number | null
-          budget_min: number | null
           created_at: string
           id: string
-          min_bar: number | null
           notify_email: boolean
           notify_weekly: boolean
           notify_whatsapp: boolean
@@ -123,11 +152,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          budget_max?: number | null
-          budget_min?: number | null
           created_at?: string
           id?: string
-          min_bar?: number | null
           notify_email?: boolean
           notify_weekly?: boolean
           notify_whatsapp?: boolean
@@ -137,11 +163,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          budget_max?: number | null
-          budget_min?: number | null
           created_at?: string
           id?: string
-          min_bar?: number | null
           notify_email?: boolean
           notify_weekly?: boolean
           notify_whatsapp?: boolean
@@ -431,6 +454,24 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -472,7 +513,6 @@ export type Database = {
       }
       properties: {
         Row: {
-          bar_percentage: number | null
           city: string
           contact_profile_id: string | null
           created_at: string
@@ -484,6 +524,7 @@ export type Database = {
           location: string
           price: number | null
           property_type: string | null
+          rental_income_annual: number | null
           slug: string
           status: string
           surface_area: number | null
@@ -493,7 +534,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          bar_percentage?: number | null
           city: string
           contact_profile_id?: string | null
           created_at?: string
@@ -505,6 +545,7 @@ export type Database = {
           location: string
           price?: number | null
           property_type?: string | null
+          rental_income_annual?: number | null
           slug: string
           status?: string
           surface_area?: number | null
@@ -514,7 +555,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          bar_percentage?: number | null
           city?: string
           contact_profile_id?: string | null
           created_at?: string
@@ -526,6 +566,7 @@ export type Database = {
           location?: string
           price?: number | null
           property_type?: string | null
+          rental_income_annual?: number | null
           slug?: string
           status?: string
           surface_area?: number | null

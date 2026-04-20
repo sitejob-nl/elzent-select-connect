@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mail, Lock, UserPlus, Loader2, ShieldCheck, Building2, ArrowLeft, User, Briefcase, MessageSquare } from "lucide-react";
+import { Mail, Lock, UserPlus, Loader2, ShieldCheck, Building2, ArrowLeft, User, Briefcase, MessageSquare, Phone } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useSubmitAccessRequest } from "@/hooks/useAccessRequest";
@@ -18,6 +18,7 @@ const LoginPage = () => {
   const [showAccessForm, setShowAccessForm] = useState(false);
   const [accessName, setAccessName] = useState("");
   const [accessEmail, setAccessEmail] = useState("");
+  const [accessPhone, setAccessPhone] = useState("");
   const [accessCompany, setAccessCompany] = useState("");
   const [accessMessage, setAccessMessage] = useState("");
   const submitAccess = useSubmitAccessRequest();
@@ -78,6 +79,7 @@ const LoginPage = () => {
       await submitAccess.mutateAsync({
         name: accessName,
         email: accessEmail,
+        phone: accessPhone || undefined,
         company: accessCompany || undefined,
         message: accessMessage || undefined,
       });
@@ -85,6 +87,7 @@ const LoginPage = () => {
       setShowAccessForm(false);
       setAccessName("");
       setAccessEmail("");
+      setAccessPhone("");
       setAccessCompany("");
       setAccessMessage("");
     } catch (err: any) {
@@ -279,6 +282,19 @@ const LoginPage = () => {
                       onChange={(e) => setAccessEmail(e.target.value)}
                       placeholder="naam@voorbeeld.nl"
                       required
+                      className="w-full py-2.5 pl-10 pr-4 rounded-md border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Telefoonnummer</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="tel"
+                      value={accessPhone}
+                      onChange={(e) => setAccessPhone(e.target.value)}
+                      placeholder="Optioneel"
                       className="w-full py-2.5 pl-10 pr-4 rounded-md border border-input bg-background text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                     />
                   </div>

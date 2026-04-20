@@ -39,7 +39,7 @@ type PropertyDraft = {
   property_type: string | null;
   units: number | null;
   surface_area: number | null;
-  bar_percentage: number | null;
+  rental_income_annual: number | null;
   status: string;
   image_url: string | null;
   tags: string[];
@@ -55,7 +55,7 @@ const emptyProperty: PropertyDraft = {
   property_type: "",
   units: null,
   surface_area: null,
-  bar_percentage: null,
+  rental_income_annual: null,
   status: "draft",
   image_url: "",
   tags: [],
@@ -127,7 +127,7 @@ export default function AdminAanbod() {
       property_type: p.property_type,
       units: p.units,
       surface_area: p.surface_area,
-      bar_percentage: p.bar_percentage,
+      rental_income_annual: p.rental_income_annual,
       status: p.status,
       image_url: p.image_url,
       tags: p.tags,
@@ -303,7 +303,7 @@ export default function AdminAanbod() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Financieel" label="Cijfers">
+            <SectionCard title="Financieel" label="Cijfers (circa)">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1.5">Prijs (EUR)</label>
@@ -311,9 +311,9 @@ export default function AdminAanbod() {
                     placeholder="0" className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">BAR %</label>
-                  <input type="number" step="0.1" value={editing.bar_percentage ?? ""} onChange={(e) => setEditing({ ...editing, bar_percentage: e.target.value ? Number(e.target.value) : null })}
-                    placeholder="0.0" className={inputClass} />
+                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Huurinkomsten p/j</label>
+                  <input type="number" value={editing.rental_income_annual ?? ""} onChange={(e) => setEditing({ ...editing, rental_income_annual: e.target.value ? Number(e.target.value) : null })}
+                    placeholder="0" className={inputClass} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1.5">Eenheden</label>
@@ -447,17 +447,16 @@ export default function AdminAanbod() {
           </div>
         ) : (
           <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-            <div className="hidden sm:grid grid-cols-[1fr_120px_80px_100px_80px] gap-4 px-6 py-3 border-b border-border bg-muted/50 text-xs text-muted-foreground font-semibold uppercase tracking-wider">
-              <span>Object</span><span>Stad</span><span>BAR</span><span>Status</span><span></span>
+            <div className="hidden sm:grid grid-cols-[1fr_120px_100px_80px] gap-4 px-6 py-3 border-b border-border bg-muted/50 text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+              <span>Object</span><span>Stad</span><span>Status</span><span></span>
             </div>
             {filtered.map((p) => (
-              <div key={p.id} className="flex flex-col sm:grid sm:grid-cols-[1fr_120px_80px_100px_80px] gap-2 sm:gap-4 px-6 py-4 border-b border-border last:border-0 items-start sm:items-center hover:bg-muted/30 transition-colors">
+              <div key={p.id} className="flex flex-col sm:grid sm:grid-cols-[1fr_120px_100px_80px] gap-2 sm:gap-4 px-6 py-4 border-b border-border last:border-0 items-start sm:items-center hover:bg-muted/30 transition-colors">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{p.title}</p>
                   <p className="text-xs text-muted-foreground truncate">{p.location}</p>
                 </div>
                 <span className="text-sm text-muted-foreground">{p.city}</span>
-                <span className="text-sm text-foreground font-medium">{p.bar_percentage ? `${p.bar_percentage}%` : "–"}</span>
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${
                   p.status === "published" ? "bg-primary/15 text-primary" :
                   p.status === "draft" ? "bg-amber-100 text-amber-700" :

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import PropertyCard from "@/components/PropertyCard";
+import DisclaimerFooter from "@/components/DisclaimerFooter";
 import { Search } from "lucide-react";
 import { PropertyListSkeleton } from "@/components/Skeletons";
 import { ErrorState } from "@/components/ErrorState";
@@ -90,28 +91,30 @@ const AanbodPage = () => {
             <p className="text-muted-foreground font-body">Geen objecten gevonden.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger">
-            {filtered.map((p) => {
-              const isFav = favorites?.has(p.id) ?? false;
-              return (
-                <PropertyCard
-                  key={p.slug}
-                  slug={p.slug}
-                  title={p.title}
-                  location={p.location}
-                  city={p.city}
-                  imageUrl={p.image_url}
-                  price={p.price}
-                  barPercentage={p.bar_percentage}
-                  propertyType={p.property_type}
-                  matchScore={p.match_score}
-                  createdAt={p.created_at}
-                  isFavorite={isFav}
-                  onToggleFavorite={() => toggleFavorite.mutate({ propertyId: p.id, isFavorite: isFav })}
-                />
-              );
-            })}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger">
+              {filtered.map((p) => {
+                const isFav = favorites?.has(p.id) ?? false;
+                return (
+                  <PropertyCard
+                    key={p.slug}
+                    slug={p.slug}
+                    title={p.title}
+                    location={p.location}
+                    city={p.city}
+                    imageUrl={p.image_url}
+                    price={p.price}
+                    propertyType={p.property_type}
+                    matchScore={p.match_score}
+                    createdAt={p.created_at}
+                    isFavorite={isFav}
+                    onToggleFavorite={() => toggleFavorite.mutate({ propertyId: p.id, isFavorite: isFav })}
+                  />
+                );
+              })}
+            </div>
+            <DisclaimerFooter className="mt-10" />
+          </>
         )}
       </div>
     </AppLayout>

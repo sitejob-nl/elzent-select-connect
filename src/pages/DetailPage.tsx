@@ -2,28 +2,20 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import SectionCard from "@/components/SectionCard";
-import { Button } from "@/components/ui/button";
 import {
   Sparkles, Check, ArrowLeft, Heart,
   Loader2, FileText, Sheet, Image as ImageIcon, Lock, ChevronRight, MessageSquare,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import PropertyPhotoGallery from "@/components/PropertyPhotoGallery";
+import DisclaimerFooter from "@/components/DisclaimerFooter";
+import InterestConfirmDialog from "@/components/InterestConfirmDialog";
 import { useProperty } from "@/hooks/useProperties";
 import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 import { useSubmitInterest, useInterestRequests } from "@/hooks/useInterest";
 import { useToast } from "@/hooks/use-toast";
 import { propertyTypeLabel } from "@/lib/taxonomy";
-
-const formatPrice = (price: number | null) => {
-  if (!price) return "–";
-  if (price >= 1_000_000) return `€ ${(price / 1_000_000).toFixed(1)}M`;
-  if (price >= 1_000) return `€ ${Math.round(price / 1_000)}K`;
-  return `€ ${price}`;
-};
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
+import { formatCirca, formatCircaCurrency } from "@/lib/format";
 
 const DetailPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -33,7 +25,7 @@ const DetailPage = () => {
   const submitInterest = useSubmitInterest();
   const { data: interests } = useInterestRequests();
   const { toast } = useToast();
-  const [interestMessage, setInterestMessage] = useState("");
+  const [interestDialogOpen, setInterestDialogOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -67,18 +59,19 @@ const DetailPage = () => {
   const isFav = favorites?.has(property.id) ?? false;
   const hasInterest = interests?.some((i) => i.property_id === property.id) ?? false;
   const isNew = Date.now() - new Date(property.created_at).getTime() < 14 * 24 * 60 * 60 * 1000;
-  const rentalIncome = property.price && property.bar_percentage
-    ? Math.round(property.price * property.bar_percentage / 100)
-    : null;
+  const rentalIncome = property.rental_income_annual ?? null;
 
-  const handleInterest = async () => {
+  const handleInterestConfirm = async (message: string) => {
     try {
       await submitInterest.mutateAsync({
         propertyId: property.id,
-        message: interestMessage || undefined,
+        message: message || undefined,
       });
-      toast({ title: "Interesse gemeld", description: "Wij nemen spoedig contact met u op." });
-      setInterestMessage("");
+      toast({
+        title: "Interesse gemeld",
+        description: "Wij nemen binnen 48 uur contact met u op. Bevestiging onderweg per e-mail.",
+      });
+      setInterestDialogOpen(false);
     } catch {
       toast({ title: "Fout", description: "Kon interesse niet melden. Probeer opnieuw.", variant: "destructive" });
     }
@@ -86,6 +79,13 @@ const DetailPage = () => {
 
   return (
     <AppLayout>
+      <InterestConfirmDialog
+        open={interestDialogOpen}
+        onOpenChange={setInterestDialogOpen}
+        propertyTitle={property.title}
+        onConfirm={handleInterestConfirm}
+        submitting={submitInterest.isPending}
+      />
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground font-body mb-6">
@@ -113,7 +113,7 @@ const DetailPage = () => {
             <div>
               <span className="text-sm font-medium text-foreground">Waarom deze match?</span>
               <span className="text-sm text-muted-foreground ml-1">
-                Dit object scoort {property.match_score}% op basis van uw investeringsprofiel — regio, budget en type vastgoed komen overeen.
+                Dit object scoort {property.match_score}% op basis van uw investeringsprofiel — regio en type vastgoed komen overeen.
               </span>
             </div>
           </div>
@@ -123,16 +123,15 @@ const DetailPage = () => {
           {/* Main content */}
           <div className="lg:col-span-2 space-y-8 stagger">
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {[
-                { label: "Investering", value: formatPrice(property.price) },
-                { label: "BAR", value: property.bar_percentage ? `${property.bar_percentage}%` : "–", highlight: true },
-                { label: "Huurinkomsten", value: rentalIncome ? formatCurrency(rentalIncome) : "–", sub: "per jaar" },
+                { label: "Investering", value: formatCirca(property.price) },
+                { label: "Huurinkomsten", value: rentalIncome ? formatCircaCurrency(rentalIncome) : "–", sub: "per jaar" },
                 { label: "Eenheden", value: property.units?.toString() ?? "–", sub: property.property_type ? propertyTypeLabel(property.property_type) : undefined },
               ].map((s) => (
                 <div key={s.label} className="bg-card rounded-lg border border-border p-4 text-center">
                   <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{s.label}</div>
-                  <div className={`text-xl font-display font-bold ${s.highlight ? "text-primary" : "text-foreground"}`}>{s.value}</div>
+                  <div className="text-xl font-display font-bold text-foreground">{s.value}</div>
                   {s.sub && <div className="text-[0.65rem] text-muted-foreground">{s.sub}</div>}
                 </div>
               ))}
@@ -215,20 +214,12 @@ const DetailPage = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between py-3 border-b-2 border-primary/30">
                     <span className="font-bold text-foreground">Totale investering</span>
-                    <span className="font-display font-bold text-foreground text-base">{formatCurrency(property.price)}</span>
+                    <span className="font-display font-bold text-foreground text-base">{formatCircaCurrency(property.price)}</span>
                   </div>
                   {rentalIncome && (
-                    <>
-                      <div className="flex justify-between py-2 border-b border-border mt-2">
-                        <span className="text-muted-foreground">Bruto huurinkomsten (jaar)</span>
-                        <span className="font-medium text-primary">{formatCurrency(rentalIncome)}</span>
-                      </div>
-                    </>
-                  )}
-                  {property.bar_percentage && (
-                    <div className="flex justify-between py-3 bg-primary/5 -mx-6 px-6 rounded">
-                      <span className="font-bold text-foreground">BAR</span>
-                      <span className="font-display font-bold text-primary text-lg">{property.bar_percentage}%</span>
+                    <div className="flex justify-between py-2 border-b border-border mt-2">
+                      <span className="text-muted-foreground">Bruto huurinkomsten (jaar)</span>
+                      <span className="font-medium text-primary">{formatCircaCurrency(rentalIncome)}</span>
                     </div>
                   )}
                 </div>
@@ -300,6 +291,8 @@ const DetailPage = () => {
                 ))}
               </div>
             )}
+
+            <DisclaimerFooter />
           </div>
 
           {/* Sidebar */}
@@ -323,24 +316,16 @@ const DetailPage = () => {
                     ))}
                   </div>
 
-                  {hasInterest ? (
+                  {hasInterest && (
                     <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 text-center">
                       <p className="font-body text-sm font-semibold text-white">Interesse gemeld ✓</p>
                       <p className="font-body text-xs text-gray-300">Wij nemen contact met u op.</p>
                     </div>
-                  ) : (
-                    <textarea
-                      value={interestMessage}
-                      onChange={(e) => setInterestMessage(e.target.value)}
-                      placeholder="Optioneel: voeg een bericht toe..."
-                      rows={3}
-                      className="w-full mb-3 px-3 py-2 rounded-lg border border-gray-600 bg-white/5 text-white font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-none placeholder:text-gray-500"
-                    />
                   )}
                 </div>
                 {!hasInterest && (
                   <button
-                    onClick={handleInterest}
+                    onClick={() => setInterestDialogOpen(true)}
                     disabled={submitInterest.isPending}
                     className="w-full bg-primary px-6 py-4 hover:brightness-110 transition-all text-center cursor-pointer disabled:opacity-50"
                   >

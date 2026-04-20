@@ -18,6 +18,7 @@ import AdminAanbod from "./pages/admin/AdminAanbod";
 import AdminKlanten from "./pages/admin/AdminKlanten";
 import AdminLeads from "./pages/admin/AdminLeads";
 import AdminToegang from "./pages/admin/AdminToegang";
+import AdminLocaties from "./pages/admin/AdminLocaties";
 import AdminEmail from "./pages/admin/AdminEmail";
 import AdminEmailDetail from "./pages/admin/AdminEmailDetail";
 import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/admin/klanten" element={<AdminRoute><AdminKlanten /></AdminRoute>} />
             <Route path="/admin/leads" element={<AdminRoute><AdminLeads /></AdminRoute>} />
             <Route path="/admin/toegang" element={<AdminRoute><AdminToegang /></AdminRoute>} />
+            <Route path="/admin/locaties" element={<AdminRoute><AdminLocaties /></AdminRoute>} />
             <Route path="/admin/email" element={<AdminRoute><AdminEmail /></AdminRoute>} />
             <Route path="/admin/email/templates" element={<AdminRoute><AdminEmailTemplates /></AdminRoute>} />
             <Route path="/admin/email/templates/:slug" element={<AdminRoute><AdminEmailTemplateEditor /></AdminRoute>} />

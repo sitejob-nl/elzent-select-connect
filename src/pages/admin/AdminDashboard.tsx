@@ -1,6 +1,6 @@
 import AdminLayout from "@/components/AdminLayout";
 import SectionCard from "@/components/SectionCard";
-import { Building2, Users, Inbox, TrendingUp, MessageSquare, ArrowRight, ShieldCheck } from "lucide-react";
+import { Building2, Users, Inbox, Heart, MessageSquare, ArrowRight, ShieldCheck } from "lucide-react";
 import { StatsSkeleton, TableSkeleton } from "@/components/Skeletons";
 import { useAdminStats, useAdminInterestRequests } from "@/hooks/useAdmin";
 import { Link } from "react-router-dom";
@@ -15,7 +15,7 @@ export default function AdminDashboard() {
     { label: "Gepubliceerd Aanbod", value: stats?.publishedCount ?? "–", icon: Building2, color: "text-primary", bg: "bg-primary/10" },
     { label: "Actieve Klanten", value: stats?.activeClients ?? "–", icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
     { label: "Nieuwe Leads", value: stats?.newLeads ?? "–", icon: Inbox, color: "text-amber-500", bg: "bg-amber-50" },
-    { label: "Gem. BAR", value: stats ? `${stats.avgBar}%` : "–", icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Openstaande interesses", value: stats?.pendingInterests ?? "–", icon: Heart, color: "text-red-500", bg: "bg-red-50" },
   ];
 
   return (

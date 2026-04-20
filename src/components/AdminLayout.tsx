@@ -6,6 +6,7 @@ import {
   Inbox,
   ShieldCheck,
   Mail,
+  MapPin,
   LogOut,
   ChevronRight,
 } from "lucide-react";
@@ -17,6 +18,7 @@ const sidebarItems = [
   { label: "Klanten", path: "/admin/klanten", icon: Users },
   { label: "Leads", path: "/admin/leads", icon: Inbox },
   { label: "E-mail", path: "/admin/email", icon: Mail },
+  { label: "Locaties", path: "/admin/locaties", icon: MapPin },
   { label: "Toegang", path: "/admin/toegang", icon: ShieldCheck },
 ];
 

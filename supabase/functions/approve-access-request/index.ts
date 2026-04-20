@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
     // Fetch access request (must be pending)
     const { data: accessRequest, error: fetchError } = await supabaseAdmin
       .from("access_requests")
-      .select("id, email, name, company, status")
+      .select("id, email, name, phone, company, status")
       .eq("id", access_request_id)
       .single();
 
@@ -103,6 +103,7 @@ Deno.serve(async (req: Request) => {
     const email = accessRequest.email.trim().toLowerCase();
     const fullName = accessRequest.name ?? null;
     const company = accessRequest.company ?? null;
+    const phone = accessRequest.phone ?? null;
 
     // Generate an invite link via Supabase admin API. This both creates
     // the auth.users row AND returns a one-time hashed_token. We embed
@@ -173,6 +174,7 @@ Deno.serve(async (req: Request) => {
           email,
           full_name: fullName,
           company,
+          phone,
           role: "client",
         },
         { onConflict: "id" },

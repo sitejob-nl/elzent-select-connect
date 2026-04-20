@@ -43,7 +43,6 @@ const SAMPLE_DEFAULTS: Record<string, string> = {
   property_city: "Eindhoven",
   property_type: "appartement",
   property_price: "€ 1.2M",
-  property_bar: "6.5",
   property_slug: "appartementencomplex-woensel",
   match_score: "85",
   app_url: "https://app.resid.nl",

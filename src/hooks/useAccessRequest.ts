@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface AccessRequestInput {
   name: string;
   email: string;
+  phone?: string;
   company?: string;
   message?: string;
 }
@@ -16,6 +17,7 @@ export function useSubmitAccessRequest() {
         .insert({
           name: input.name,
           email: input.email,
+          phone: input.phone || null,
           company: input.company || null,
           message: input.message || null,
         });

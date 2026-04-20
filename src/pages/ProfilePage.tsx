@@ -1,27 +1,25 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import SectionCard from "@/components/SectionCard";
-import { MapPin, Home, PiggyBank, Bell, MessageSquare, Loader2 } from "lucide-react";
+import { MapPin, Home, Bell, MessageSquare, Loader2, Sparkles } from "lucide-react";
 import { ProfileSkeleton } from "@/components/Skeletons";
 import { toast } from "sonner";
 import { usePreferences, useSavePreferences } from "@/hooks/usePreferences";
-import { REGIONS, PROPERTY_TYPES, propertyTypeLabel } from "@/lib/taxonomy";
-
-const BUDGET_MIN = 100_000;
-const BUDGET_MAX = 5_000_000;
-const BAR_MIN = 2;
-const BAR_MAX = 10;
+import { useRegions } from "@/hooks/useAdminRegions";
+import { PROPERTY_TYPES, propertyTypeLabel } from "@/lib/taxonomy";
 
 const ProfilePage = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const onboarding = searchParams.get("onboarding") === "1";
   const { data: prefs, isLoading } = usePreferences();
   const savePrefs = useSavePreferences();
+  const { data: regions, isLoading: regionsLoading } = useRegions();
 
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [budgetMin, setBudgetMin] = useState(500_000);
-  const [budgetMax, setBudgetMax] = useState(2_500_000);
-  const [minBar, setMinBar] = useState(5.5);
-  const [emailNotif, setEmailNotif] = useState(false);
+  const [emailNotif, setEmailNotif] = useState(true);
   const [whatsappNotif, setWhatsappNotif] = useState(false);
   const [weeklyNotif, setWeeklyNotif] = useState(false);
 
@@ -29,9 +27,6 @@ const ProfilePage = () => {
     if (prefs) {
       setSelectedRegions(prefs.regions ?? []);
       setSelectedTypes(prefs.property_types ?? []);
-      setBudgetMin(prefs.budget_min ?? 500_000);
-      setBudgetMax(prefs.budget_max ?? 2_500_000);
-      setMinBar(prefs.min_bar ?? 5.5);
       setEmailNotif(prefs.notify_email);
       setWhatsappNotif(prefs.notify_whatsapp);
       setWeeklyNotif(prefs.notify_weekly);
@@ -47,26 +42,34 @@ const ProfilePage = () => {
   };
 
   const handleSave = async () => {
+    if (selectedRegions.length === 0 || selectedTypes.length === 0) {
+      toast.error("Selecteer minimaal één regio en één type", {
+        description: "We gebruiken deze voorkeuren om uw matches te berekenen.",
+      });
+      return;
+    }
     try {
       await savePrefs.mutateAsync({
         regions: selectedRegions,
         property_types: selectedTypes,
-        budget_min: budgetMin,
-        budget_max: budgetMax,
-        min_bar: minBar,
         notify_email: emailNotif,
         notify_whatsapp: whatsappNotif,
         notify_weekly: weeklyNotif,
       });
-      toast.success("Profiel opgeslagen", { description: "Uw voorkeuren zijn bijgewerkt." });
+      toast.success("Profiel opgeslagen", {
+        description: "Uw voorkeuren zijn bijgewerkt.",
+      });
+      if (onboarding) {
+        navigate("/dashboard", { replace: true });
+      }
     } catch {
       toast.error("Fout", { description: "Kon profiel niet opslaan. Probeer opnieuw." });
     }
   };
 
-  if (isLoading) {
+  if (isLoading || regionsLoading) {
     return (
-      <AppLayout>
+      <AppLayout hideNav={onboarding}>
         <div className="container mx-auto px-4 py-8">
           <ProfileSkeleton />
         </div>
@@ -74,20 +77,9 @@ const ProfilePage = () => {
     );
   }
 
-  const budgetSliderValue = Math.round(((budgetMax - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100);
-  const barSliderValue = Math.round(((minBar - BAR_MIN) / (BAR_MAX - BAR_MIN)) * 100);
-
-  const formatBudget = (v: number) => {
-    if (v >= 1_000_000) return `€ ${(v / 1_000_000).toFixed(1)}m`;
-    return `€ ${(v / 1_000).toFixed(0)}k`;
-  };
-
-  // Match potentieel: percentage of profile completeness
   const completeness = Math.min(100, Math.round(
-    (selectedRegions.length > 0 ? 25 : 0) +
-    (selectedTypes.length > 0 ? 25 : 0) +
-    (budgetMax > BUDGET_MIN ? 25 : 0) +
-    (minBar > BAR_MIN ? 25 : 0)
+    (selectedRegions.length > 0 ? 50 : 0) +
+    (selectedTypes.length > 0 ? 50 : 0)
   ));
 
   const notifSummary = [
@@ -97,12 +89,22 @@ const ProfilePage = () => {
   ].filter(Boolean).join(" + ") || "Geen";
 
   return (
-    <AppLayout>
+    <AppLayout hideNav={onboarding}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-10">
-          <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground mb-2">Investeringsprofiel</h1>
+          {onboarding && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4">
+              <Sparkles className="h-3.5 w-3.5" />
+              Welkom bij Resid — stel uw profiel in
+            </div>
+          )}
+          <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground mb-2">
+            {onboarding ? "Welkom — vertel ons waar u in geïnteresseerd bent" : "Investeringsprofiel"}
+          </h1>
           <p className="text-muted-foreground text-lg">
-            Stel uw voorkeuren in voor automatische matching met ons exclusieve aanbod.
+            {onboarding
+              ? "Op basis van uw voorkeuren krijgt u automatisch matches uit ons exclusieve aanbod. U kunt dit later altijd aanpassen."
+              : "Stel uw voorkeuren in voor automatische matching met ons exclusieve aanbod."}
           </p>
         </div>
 
@@ -112,7 +114,7 @@ const ProfilePage = () => {
             <SectionCard title="Regio's" label="Locatie focus">
               <p className="text-sm text-muted-foreground mb-4">In welke steden bent u geïnteresseerd?</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {REGIONS.map((r) => (
+                {(regions ?? []).map((r) => (
                   <label
                     key={r.name}
                     className={`relative flex items-start py-3 px-4 border rounded cursor-pointer hover:bg-muted/50 transition-all ${
@@ -123,7 +125,9 @@ const ProfilePage = () => {
                   >
                     <div className="min-w-0 flex-1 text-sm">
                       <div className="font-medium text-foreground">{r.name}</div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{r.sub}</p>
+                      {r.sub && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{r.sub}</p>
+                      )}
                     </div>
                     <div className="ml-3 flex items-center h-5">
                       <input
@@ -157,57 +161,6 @@ const ProfilePage = () => {
                     </div>
                   </div>
                 ))}
-              </div>
-            </SectionCard>
-
-            {/* Financieel Kader */}
-            <SectionCard title="Financieel Kader" label="Budget & Rendement">
-              <div className="space-y-8">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-foreground">Investeringsbudget</label>
-                    <span className="text-sm font-bold text-primary font-display">{formatBudget(budgetMin)} – {formatBudget(budgetMax)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={budgetSliderValue}
-                    onChange={(e) => {
-                      const pct = Number(e.target.value) / 100;
-                      const max = Math.round(BUDGET_MIN + pct * (BUDGET_MAX - BUDGET_MIN));
-                      setBudgetMax(max);
-                      if (budgetMin > max) setBudgetMin(max);
-                    }}
-                    className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
-                  />
-                  <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                    <span>{formatBudget(BUDGET_MIN)}</span>
-                    <span>{formatBudget(BUDGET_MAX)}+</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-foreground">Minimaal BAR</label>
-                    <span className="text-sm font-bold text-primary font-display">{minBar.toFixed(1)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={barSliderValue}
-                    onChange={(e) => {
-                      const pct = Number(e.target.value) / 100;
-                      setMinBar(Math.round((BAR_MIN + pct * (BAR_MAX - BAR_MIN)) * 10) / 10);
-                    }}
-                    className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
-                  />
-                  <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                    <span>{BAR_MIN}%</span>
-                    <span>{BAR_MAX}%+</span>
-                  </div>
-                </div>
               </div>
             </SectionCard>
 
@@ -247,7 +200,9 @@ const ProfilePage = () => {
               <div className="bg-secondary text-secondary-foreground rounded-lg shadow-lg overflow-hidden">
                 <div className="p-6">
                   <h3 className="text-xl font-display font-bold text-primary mb-1">Uw Profiel</h3>
-                  <p className="text-gray-300 text-sm mb-6">Actief en zichtbaar voor ons team.</p>
+                  <p className="text-gray-300 text-sm mb-6">
+                    {onboarding ? "Vul minimaal regio en type in." : "Actief en zichtbaar voor ons team."}
+                  </p>
 
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-300">Match Potentieel</span>
@@ -271,10 +226,6 @@ const ProfilePage = () => {
                       </div>
                     )}
                     <div className="flex items-start text-sm">
-                      <PiggyBank className="h-4 w-4 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                      <span className="text-gray-200">Budget tot {formatBudget(budgetMax)}</span>
-                    </div>
-                    <div className="flex items-start text-sm">
                       <Bell className="h-4 w-4 text-primary mr-2 mt-0.5 flex-shrink-0" />
                       <span className="text-gray-200">{notifSummary}</span>
                     </div>
@@ -286,7 +237,9 @@ const ProfilePage = () => {
                   className="w-full bg-primary px-6 py-4 hover:brightness-110 transition-all text-center cursor-pointer disabled:opacity-50"
                 >
                   {savePrefs.isPending && <Loader2 className="h-4 w-4 animate-spin inline mr-2" />}
-                  <span className="text-white font-bold uppercase tracking-wider text-sm">Profiel Opslaan</span>
+                  <span className="text-white font-bold uppercase tracking-wider text-sm">
+                    {onboarding ? "Profiel activeren" : "Profiel Opslaan"}
+                  </span>
                 </button>
               </div>
 

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Sparkles, Heart } from "lucide-react";
 import { propertyTypeLabel } from "@/lib/taxonomy";
+import { formatCirca } from "@/lib/format";
 
 interface PropertyCardProps {
   slug: string;
@@ -9,7 +10,6 @@ interface PropertyCardProps {
   city: string;
   imageUrl: string | null;
   price: number | null;
-  barPercentage: number | null;
   propertyType: string | null;
   matchScore: number;
   createdAt: string;
@@ -17,13 +17,6 @@ interface PropertyCardProps {
   isFavorite: boolean;
   onToggleFavorite: () => void;
 }
-
-const formatPrice = (price: number | null) => {
-  if (!price) return "–";
-  if (price >= 1_000_000) return `€ ${(price / 1_000_000).toFixed(1)}M`;
-  if (price >= 1_000) return `€ ${Math.round(price / 1_000)}K`;
-  return `€ ${price}`;
-};
 
 const isNew = (createdAt: string) => {
   const diff = Date.now() - new Date(createdAt).getTime();
@@ -47,7 +40,6 @@ const PropertyCard = ({
   location,
   imageUrl,
   price,
-  barPercentage,
   propertyType,
   matchScore,
   createdAt,
@@ -120,16 +112,10 @@ const PropertyCard = ({
         </p>
       )}
 
-      <div className="grid grid-cols-3 gap-3 mt-3">
+      <div className="grid grid-cols-2 gap-3 mt-3">
         <div>
           <div className="text-xs text-muted-foreground">Investering</div>
-          <div className="font-display font-bold text-foreground text-sm">{formatPrice(price)}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">BAR</div>
-          <div className="font-display font-bold text-primary text-sm">
-            {barPercentage ? `${barPercentage}%` : "–"}
-          </div>
+          <div className="font-display font-bold text-foreground text-sm">{formatCirca(price)}</div>
         </div>
         <div>
           <div className="text-xs text-muted-foreground">Type</div>

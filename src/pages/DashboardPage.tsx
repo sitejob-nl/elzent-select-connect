@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import SectionCard from "@/components/SectionCard";
 import MatchListItem from "@/components/MatchListItem";
-import { Heart, TrendingUp, Sparkles, type LucideIcon } from "lucide-react";
+import { Heart, Building2, Sparkles, type LucideIcon } from "lucide-react";
 import { StatsSkeleton, MatchCardSkeleton } from "@/components/Skeletons";
 import { ErrorState } from "@/components/ErrorState";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,16 +34,12 @@ const DashboardPage = () => {
   const firstName = profile?.full_name?.split(" ")[0] ?? "Investeerder";
   const favoriteCount = favorites?.size ?? 0;
   const interestCount = interests?.length ?? 0;
+  const totalSupply = (properties ?? []).length;
 
   const matches = (properties ?? [])
     .filter((p) => p.match_score > 0)
     .sort((a, b) => b.match_score - a.match_score)
     .slice(0, 4);
-
-  const withBar = (properties ?? []).filter((p) => p.bar_percentage);
-  const avgBar = withBar.length > 0
-    ? (withBar.reduce((sum, p) => sum + (p.bar_percentage ?? 0), 0) / withBar.length).toFixed(1)
-    : "–";
 
   type DashboardStat = {
     label: string;
@@ -66,7 +62,15 @@ const DashboardPage = () => {
       subColor: favoriteCount === 0 ? "text-muted-foreground" : "text-primary",
       linkTo: "/favorieten",
     },
-    { label: "Gem. BAR", value: avgBar === "–" ? avgBar : `${avgBar}%`, sub: "Bruto aanvangsrendement", icon: TrendingUp, color: "text-primary", subColor: "text-muted-foreground" },
+    {
+      label: "Totaal aanbod",
+      value: totalSupply.toString(),
+      sub: totalSupply === 0 ? "Geen aanbod" : "Bekijk aanbod →",
+      icon: Building2,
+      color: "text-primary",
+      subColor: totalSupply === 0 ? "text-muted-foreground" : "text-primary",
+      linkTo: "/aanbod",
+    },
     { label: "Nieuwe Matches", value: matches.length.toString(), sub: "Bekijk aanbod →", icon: Sparkles, color: "text-primary", subColor: "text-primary", linkTo: "/aanbod" },
   ];
 
@@ -139,7 +143,6 @@ const DashboardPage = () => {
                   location={`${m.location} · ${m.units ? `${m.units} eenheden` : propertyTypeLabel(m.property_type)}`}
                   matchReason={`Match: ${m.match_score}% op basis van uw profiel`}
                   price={m.price}
-                  barPercentage={m.bar_percentage}
                   imageUrl={m.image_url}
                 />
               ))}

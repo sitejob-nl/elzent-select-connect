@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
-import { MapPin, Home, PiggyBank, Users, TrendingUp, Pencil, Trash2, Loader2 } from "lucide-react";
+import { MapPin, Home, Users, Pencil, Trash2, Loader2 } from "lucide-react";
 import { TableSkeleton } from "@/components/Skeletons";
 import { useAdminClients, useUpdateClient, useSoftDeleteClient } from "@/hooks/useAdmin";
 import { propertyTypeLabel } from "@/lib/taxonomy";
@@ -166,18 +166,6 @@ export default function AdminKlanten() {
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Home className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                             {prefs.property_types.map((t: string) => propertyTypeLabel(t)).join(", ")}
-                          </div>
-                        )}
-                        {(prefs.budget_min || prefs.budget_max) && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <PiggyBank className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                            Budget: {prefs.budget_min ? `€${(prefs.budget_min / 1000).toFixed(0)}k` : "–"} – {prefs.budget_max ? `€${(prefs.budget_max / 1000).toFixed(0)}k` : "–"}
-                          </div>
-                        )}
-                        {prefs.min_bar && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <TrendingUp className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                            Min. BAR: {prefs.min_bar}%
                           </div>
                         )}
                       </div>

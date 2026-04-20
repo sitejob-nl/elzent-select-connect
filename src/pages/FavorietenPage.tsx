@@ -76,7 +76,6 @@ const FavorietenPage = () => {
                 city={p.city}
                 imageUrl={p.image_url}
                 price={p.price}
-                barPercentage={p.bar_percentage}
                 propertyType={p.property_type}
                 matchScore={p.match_score}
                 createdAt={p.created_at}
