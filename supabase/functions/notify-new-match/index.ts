@@ -1,11 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendTemplatedEmail } from "../_shared/email.ts";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const WHATSAPP_PROVIDER_KEY = Deno.env.get("WHATSAPP_PROVIDER_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+// TODO: move to env var once we run multiple environments (staging etc.).
+const APP_URL = "https://app.resid.nl";
 
 interface NotifyPayload {
   property_id: string;
@@ -149,20 +152,36 @@ Deno.serve(async (req: Request) => {
     for (const m of matched) {
       // --- Email channel ---
       if (m.wantsEmail && m.email) {
-        const emailSuccess = RESEND_API_KEY
-          ? await sendEmail(m, property, bodyText(m.score), formatPrice)
-          : true; // no provider configured — treat as virtual success for MVP tracking
+        const sendResult = await sendTemplatedEmail({
+          supabase: supabaseAdmin,
+          templateSlug: "new_match",
+          to: m.email,
+          toProfileId: m.profileId,
+          variables: {
+            user_name: m.name,
+            match_score: m.score,
+            property_title: property.title,
+            property_city: property.city,
+            property_type: property.property_type ?? "",
+            property_price: formatPrice(property.price),
+            property_bar: property.bar_percentage ?? "",
+            property_slug: property.slug,
+            app_url: APP_URL,
+          },
+        });
 
+        // In-app notification row (independent of email deliverability so the
+        // inbox always reflects intended sends; email_logs tracks actual send).
         await supabaseAdmin.from("notifications").insert({
           profile_id: m.profileId,
           type: "new_match",
           title: `Nieuw object: ${property.title}`,
           body: bodyText(m.score),
           channel: "email",
-          sent_at: emailSuccess && RESEND_API_KEY ? new Date().toISOString() : null,
+          sent_at: sendResult.ok ? new Date().toISOString() : null,
         });
 
-        if (emailSuccess) emailsSent++;
+        if (sendResult.ok) emailsSent++;
       }
 
       // --- WhatsApp channel (stub) ---
@@ -193,7 +212,6 @@ Deno.serve(async (req: Request) => {
       emailsSent,
       whatsappsSent,
       whatsappProviderConfigured: !!WHATSAPP_PROVIDER_KEY,
-      emailProviderConfigured: !!RESEND_API_KEY,
     }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
@@ -206,60 +224,12 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function sendEmail(
-  m: MatchedClient,
-  property: { title: string; slug: string; city: string; price: number | null; property_type: string | null; bar_percentage: number | null },
-  body: string,
-  formatPrice: (p: number | null) => string,
-): Promise<boolean> {
-  if (!m.email) return false;
-  const emailRes = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "Resid <noreply@resid.nl>",
-      to: [m.email],
-      subject: `Nieuwe match: ${property.title}`,
-      html: `
-        <div style="font-family: 'Helvetica Neue', sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #1a1a2e; padding: 24px 32px;">
-            <h1 style="color: #978257; font-size: 24px; margin: 0;">Resid</h1>
-          </div>
-          <div style="padding: 32px; background: #ffffff;">
-            <p style="color: #333; font-size: 16px;">Beste ${m.name},</p>
-            <p style="color: #666; font-size: 14px; line-height: 1.6;">
-              Er is een nieuw object beschikbaar dat <strong>${m.score}%</strong> matcht met uw investeringsprofiel.
-            </p>
-            <div style="background: #f8f7f4; border-left: 3px solid #978257; padding: 16px 20px; margin: 24px 0; border-radius: 4px;">
-              <h2 style="color: #1a1a2e; font-size: 18px; margin: 0 0 8px;">${property.title}</h2>
-              <p style="color: #666; font-size: 14px; margin: 0;">${property.city} &middot; ${property.property_type || ""}</p>
-              <p style="color: #978257; font-size: 16px; font-weight: bold; margin: 12px 0 0;">
-                ${formatPrice(property.price)} &middot; BAR ${property.bar_percentage}%
-              </p>
-            </div>
-            <a href="https://app.resid.nl/aanbod/${property.slug}" style="display: inline-block; background: #978257; color: #fff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">
-              Bekijk Object &rarr;
-            </a>
-          </div>
-          <div style="padding: 16px 32px; background: #f8f7f4; text-align: center;">
-            <p style="color: #999; font-size: 11px; margin: 0;">Resid &middot; Powered by Elzent Estates</p>
-          </div>
-        </div>
-      `,
-    }),
-  });
-  return emailRes.ok;
-}
-
 async function sendWhatsappStub(
   m: MatchedClient,
   property: { title: string; slug: string },
   body: string,
 ): Promise<boolean> {
   // Placeholder — replace with Twilio or Meta WhatsApp Business call.
-  console.info(`[whatsapp-stub] would send to ${m.phone}: ${body} https://app.resid.nl/aanbod/${property.slug}`);
+  console.info(`[whatsapp-stub] would send to ${m.phone}: ${body} ${APP_URL}/aanbod/${property.slug}`);
   return true;
 }

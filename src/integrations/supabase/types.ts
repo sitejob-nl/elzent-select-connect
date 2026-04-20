@@ -160,6 +160,99 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          opened_at: string | null
+          resend_id: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          template_slug: string | null
+          to_email: string
+          to_profile_id: string | null
+          variables_used: Json
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          opened_at?: string | null
+          resend_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          template_slug?: string | null
+          to_email: string
+          to_profile_id?: string | null
+          variables_used?: Json
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          opened_at?: string | null
+          resend_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          template_slug?: string | null
+          to_email?: string
+          to_profile_id?: string | null
+          variables_used?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_template_slug_fkey"
+            columns: ["template_slug"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "email_logs_to_profile_id_fkey"
+            columns: ["to_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          html: string
+          slug: string
+          subject: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          html: string
+          slug: string
+          subject: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          html?: string
+          slug?: string
+          subject?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
