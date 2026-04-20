@@ -4,15 +4,27 @@ import AppLayout from "@/components/AppLayout";
 import PropertyCard from "@/components/PropertyCard";
 import { Button } from "@/components/ui/button";
 import { PropertyListSkeleton } from "@/components/Skeletons";
+import { ErrorState } from "@/components/ErrorState";
 import { useProperties } from "@/hooks/useProperties";
 import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 
 const FavorietenPage = () => {
-  const { data: properties, isLoading: propertiesLoading } = useProperties();
-  const { data: favorites, isLoading: favoritesLoading } = useFavorites();
+  const {
+    data: properties,
+    isLoading: propertiesLoading,
+    error: propertiesError,
+    refetch: refetchProperties,
+  } = useProperties();
+  const {
+    data: favorites,
+    isLoading: favoritesLoading,
+    error: favoritesError,
+    refetch: refetchFavorites,
+  } = useFavorites();
   const toggleFavorite = useToggleFavorite();
 
   const isLoading = propertiesLoading || favoritesLoading;
+  const hasError = propertiesError || favoritesError;
 
   const favorited = (properties ?? [])
     .filter((p) => !p.deleted_at && (favorites?.has(p.id) ?? false))
@@ -31,7 +43,14 @@ const FavorietenPage = () => {
           </p>
         </div>
 
-        {isLoading ? (
+        {hasError ? (
+          <ErrorState
+            onRetry={() => {
+              refetchProperties();
+              refetchFavorites();
+            }}
+          />
+        ) : isLoading ? (
           <PropertyListSkeleton />
         ) : favorited.length === 0 ? (
           <div className="text-center py-20 flex flex-col items-center">

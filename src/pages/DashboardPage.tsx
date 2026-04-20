@@ -4,6 +4,7 @@ import SectionCard from "@/components/SectionCard";
 import MatchListItem from "@/components/MatchListItem";
 import { Heart, TrendingUp, Sparkles, type LucideIcon } from "lucide-react";
 import { StatsSkeleton, MatchCardSkeleton } from "@/components/Skeletons";
+import { ErrorState } from "@/components/ErrorState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProperties } from "@/hooks/useProperties";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -12,9 +13,23 @@ import { propertyTypeLabel } from "@/lib/taxonomy";
 
 const DashboardPage = () => {
   const { profile } = useAuth();
-  const { data: properties, isLoading } = useProperties();
-  const { data: favorites } = useFavorites();
-  const { data: interests } = useInterestRequests();
+  const {
+    data: properties,
+    isLoading,
+    error: propertiesError,
+    refetch: refetchProperties,
+  } = useProperties();
+  const {
+    data: favorites,
+    error: favoritesError,
+    refetch: refetchFavorites,
+  } = useFavorites();
+  const {
+    data: interests,
+    error: interestsError,
+    refetch: refetchInterests,
+  } = useInterestRequests();
+  const hasError = propertiesError || favoritesError || interestsError;
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "Investeerder";
   const favoriteCount = favorites?.size ?? 0;
@@ -65,8 +80,18 @@ const DashboardPage = () => {
           <p className="text-muted-foreground font-body">Uw overzicht van vandaag.</p>
         </div>
 
+        {hasError && (
+          <ErrorState
+            onRetry={() => {
+              refetchProperties();
+              refetchFavorites();
+              refetchInterests();
+            }}
+          />
+        )}
+
         {/* Stats */}
-        {isLoading ? (
+        {!hasError && (isLoading ? (
           <StatsSkeleton />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10 stagger">
@@ -88,10 +113,10 @@ const DashboardPage = () => {
               </div>
             ))}
           </div>
-        )}
+        ))}
 
         {/* Recent matches as list */}
-        {isLoading ? (
+        {!hasError && (isLoading ? (
           <div className="space-y-4">
             {Array.from({ length: 2 }).map((_, i) => <MatchCardSkeleton key={i} />)}
           </div>
@@ -120,7 +145,7 @@ const DashboardPage = () => {
               ))}
             </div>
           </SectionCard>
-        )}
+        ))}
       </div>
     </AppLayout>
   );

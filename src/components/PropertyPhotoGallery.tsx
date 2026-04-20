@@ -8,7 +8,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { Dialog, DialogContentBare, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContentBare, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { cn } from "@/lib/utils";
 import { propertyTypeLabel } from "@/lib/taxonomy";
@@ -35,6 +35,10 @@ type Props = {
 // Module-level constant so the carousel's `useEffect` dep-array on `opts`
 // doesn't re-run (and re-init Embla) on every render.
 const CAROUSEL_OPTS = { loop: false } as const;
+
+// Hero height shared between the container, Carousel, CarouselContent and
+// CarouselItem so the four stay in lockstep when tweaked.
+const HERO_HEIGHT_CLASSES = "h-64 sm:h-80 lg:h-96";
 
 /**
  * Hero photo gallery with carousel, thumbnail strip and lightbox.
@@ -157,7 +161,7 @@ const PropertyPhotoGallery = ({
   // Empty state: no property_images, no legacy image_url.
   if (total === 0) {
     return (
-      <div className="relative rounded-xl overflow-hidden mb-8 h-64 sm:h-80 lg:h-96 bg-muted flex flex-col items-center justify-center text-muted-foreground">
+      <div className={cn("relative rounded-xl overflow-hidden mb-8 bg-muted flex flex-col items-center justify-center text-muted-foreground", HERO_HEIGHT_CLASSES)}>
         <ImageOff className="h-10 w-10 mb-3 opacity-60" />
         <p className="font-body text-sm">Nog geen afbeeldingen beschikbaar</p>
       </div>
@@ -167,16 +171,16 @@ const PropertyPhotoGallery = ({
   return (
     <>
       <div className="mb-8">
-        <div className="relative rounded-xl overflow-hidden h-64 sm:h-80 lg:h-96">
+        <div className={cn("relative rounded-xl overflow-hidden", HERO_HEIGHT_CLASSES)}>
           <Carousel
             setApi={setHeroApi}
             opts={CAROUSEL_OPTS}
-            className="h-64 sm:h-80 lg:h-96"
+            className={HERO_HEIGHT_CLASSES}
             aria-label={`Afbeeldingen van ${title}`}
           >
-            <CarouselContent className="ml-0 h-64 sm:h-80 lg:h-96">
+            <CarouselContent className={cn("ml-0", HERO_HEIGHT_CLASSES)}>
               {slides.map((img, idx) => (
-                <CarouselItem key={img.id} className="pl-0 relative h-64 sm:h-80 lg:h-96">
+                <CarouselItem key={img.id} className={cn("pl-0 relative", HERO_HEIGHT_CLASSES)}>
                   {/* Clickable image area — opens the lightbox (unless this
                       click is the tail end of a swipe gesture). */}
                   <button
@@ -188,6 +192,7 @@ const PropertyPhotoGallery = ({
                     <img
                       src={img.url}
                       alt={img.alt_text ?? `${title} — afbeelding ${idx + 1}`}
+                      aria-hidden="true"
                       className="w-full h-full object-cover"
                       draggable={false}
                       loading={idx === 0 ? "eager" : "lazy"}
@@ -309,6 +314,9 @@ const PropertyPhotoGallery = ({
         >
           <VisuallyHidden.Root>
             <DialogTitle>{`Afbeeldingen van ${title}`}</DialogTitle>
+            <DialogDescription>
+              Gebruik pijltjestoetsen om te navigeren. Druk op Escape om te sluiten.
+            </DialogDescription>
           </VisuallyHidden.Root>
           <div className="relative w-full h-full flex items-center justify-center">
             <Carousel

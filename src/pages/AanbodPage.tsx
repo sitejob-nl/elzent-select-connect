@@ -3,13 +3,19 @@ import AppLayout from "@/components/AppLayout";
 import PropertyCard from "@/components/PropertyCard";
 import { Search } from "lucide-react";
 import { PropertyListSkeleton } from "@/components/Skeletons";
+import { ErrorState } from "@/components/ErrorState";
 import { useProperties } from "@/hooks/useProperties";
 import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 
 const AanbodPage = () => {
   const [filter, setFilter] = useState<"matches" | "all">("matches");
   const [search, setSearch] = useState("");
-  const { data: properties, isLoading } = useProperties();
+  const {
+    data: properties,
+    isLoading,
+    error: propertiesError,
+    refetch: refetchProperties,
+  } = useProperties();
   const { data: favorites } = useFavorites();
   const toggleFavorite = useToggleFavorite();
 
@@ -75,7 +81,9 @@ const AanbodPage = () => {
           />
         </div>
 
-        {isLoading ? (
+        {propertiesError ? (
+          <ErrorState onRetry={() => refetchProperties()} />
+        ) : isLoading ? (
           <PropertyListSkeleton />
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">

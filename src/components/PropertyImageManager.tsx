@@ -58,7 +58,7 @@ function validateFile(file: File): string | null {
   return null;
 }
 
-export default function PropertyImageManager({
+export function PropertyImageManager({
   propertyId,
   onBusyChange,
   queued = [],

@@ -19,7 +19,7 @@ import { useAdminProperties, useUpsertProperty, useSoftDeleteProperty } from "@/
 import { useUploadPropertyImage } from "@/hooks/usePropertyImages";
 import { useToast } from "@/hooks/use-toast";
 import { PROPERTY_TYPES, propertyTypeLabel } from "@/lib/taxonomy";
-import PropertyImageManager, { type QueuedImage } from "@/components/PropertyImageManager";
+import { PropertyImageManager, type QueuedImage } from "@/components/PropertyImageManager";
 import type { Database } from "@/integrations/supabase/types";
 
 // Use the generated Supabase row type as the source of truth. The
