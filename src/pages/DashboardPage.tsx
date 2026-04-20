@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import SectionCard from "@/components/SectionCard";
 import MatchListItem from "@/components/MatchListItem";
-import { Heart, TrendingUp, Sparkles, Wallet } from "lucide-react";
+import { Heart, TrendingUp, Sparkles, type LucideIcon } from "lucide-react";
 import { StatsSkeleton, MatchCardSkeleton } from "@/components/Skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProperties } from "@/hooks/useProperties";
@@ -30,24 +30,29 @@ const DashboardPage = () => {
     ? (withBar.reduce((sum, p) => sum + (p.bar_percentage ?? 0), 0) / withBar.length).toFixed(1)
     : "–";
 
-  // Portfolio value: sum of prices of properties where user has shown interest
-  const portfolioValue = interests?.reduce((sum, ir) => {
-    const prop = properties?.find((p) => p.id === ir.property_id);
-    return sum + (prop?.price ?? 0);
-  }, 0) ?? 0;
-
-  const formatPortfolio = (v: number) => {
-    if (v === 0) return "–";
-    if (v >= 1_000_000) return `€ ${(v / 1_000_000).toFixed(1)}M`;
-    if (v >= 1_000) return `€ ${Math.round(v / 1_000)}K`;
-    return `€ ${v}`;
+  type DashboardStat = {
+    label: string;
+    value: string;
+    sub: string;
+    icon: LucideIcon;
+    color: string;
+    subColor: string;
+    linkTo?: string;
   };
 
-  const stats = [
+  const stats: DashboardStat[] = [
     { label: "Actieve Interesse", value: interestCount.toString(), sub: "Geregistreerde interesses", icon: Heart, color: "text-red-400", subColor: "text-muted-foreground" },
-    { label: "Portfolio Waarde", value: formatPortfolio(portfolioValue), sub: "Totale interesse", icon: Wallet, color: "text-primary", subColor: "text-muted-foreground" },
+    {
+      label: "Opgeslagen",
+      value: favoriteCount.toString(),
+      sub: favoriteCount === 0 ? "Nog geen favorieten" : "Bekijk lijst →",
+      icon: Heart,
+      color: "text-primary",
+      subColor: favoriteCount === 0 ? "text-muted-foreground" : "text-primary",
+      linkTo: "/favorieten",
+    },
     { label: "Gem. BAR", value: avgBar === "–" ? avgBar : `${avgBar}%`, sub: "Bruto aanvangsrendement", icon: TrendingUp, color: "text-primary", subColor: "text-muted-foreground" },
-    { label: "Nieuwe Matches", value: matches.length.toString(), sub: "Bekijk aanbod →", icon: Sparkles, color: "text-primary", subColor: "text-primary" },
+    { label: "Nieuwe Matches", value: matches.length.toString(), sub: "Bekijk aanbod →", icon: Sparkles, color: "text-primary", subColor: "text-primary", linkTo: "/aanbod" },
   ];
 
   return (
@@ -76,8 +81,8 @@ const DashboardPage = () => {
                 </div>
                 <p className="text-2xl font-display font-bold text-foreground">{s.value}</p>
                 <p className={`text-xs mt-1 ${s.subColor}`}>
-                  {s.label === "Nieuwe Matches" ? (
-                    <Link to="/aanbod" className="hover:underline">{s.sub}</Link>
+                  {s.linkTo ? (
+                    <Link to={s.linkTo} className="hover:underline">{s.sub}</Link>
                   ) : s.sub}
                 </p>
               </div>
