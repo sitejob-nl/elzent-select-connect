@@ -17,6 +17,8 @@ import AdminAanbod from "./pages/admin/AdminAanbod";
 import AdminKlanten from "./pages/admin/AdminKlanten";
 import AdminLeads from "./pages/admin/AdminLeads";
 import AdminToegang from "./pages/admin/AdminToegang";
+import AdminEmail from "./pages/admin/AdminEmail";
+import AdminEmailDetail from "./pages/admin/AdminEmailDetail";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
@@ -44,6 +46,8 @@ const App = () => (
             <Route path="/admin/klanten" element={<AdminRoute><AdminKlanten /></AdminRoute>} />
             <Route path="/admin/leads" element={<AdminRoute><AdminLeads /></AdminRoute>} />
             <Route path="/admin/toegang" element={<AdminRoute><AdminToegang /></AdminRoute>} />
+            <Route path="/admin/email" element={<AdminRoute><AdminEmail /></AdminRoute>} />
+            <Route path="/admin/email/:id" element={<AdminRoute><AdminEmailDetail /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </ErrorBoundary>

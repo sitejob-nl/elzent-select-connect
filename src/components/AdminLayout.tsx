@@ -5,6 +5,7 @@ import {
   Users,
   Inbox,
   ShieldCheck,
+  Mail,
   LogOut,
   ChevronRight,
 } from "lucide-react";
@@ -15,6 +16,7 @@ const sidebarItems = [
   { label: "Aanbod", path: "/admin/aanbod", icon: Building2 },
   { label: "Klanten", path: "/admin/klanten", icon: Users },
   { label: "Leads", path: "/admin/leads", icon: Inbox },
+  { label: "E-mail", path: "/admin/email", icon: Mail },
   { label: "Toegang", path: "/admin/toegang", icon: ShieldCheck },
 ];
 
@@ -52,7 +54,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <nav className="flex-1 py-6 px-3 space-y-1">
           {sidebarItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            // Match nested routes like /admin/email/:id so the parent
+            // nav entry stays highlighted inside detail views. /admin
+            // (Dashboard) is the exception — it would otherwise match
+            // every admin path, so it requires an exact comparison.
+            const isActive =
+              item.path === "/admin"
+                ? location.pathname === "/admin"
+                : location.pathname === item.path ||
+                  location.pathname.startsWith(`${item.path}/`);
             return (
               <Link
                 key={item.path}
@@ -112,12 +122,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-md lg:hidden">
           <div className="flex items-center justify-around h-14">
             {sidebarItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              // Same parent-match logic as the sidebar so /admin/email/:id
+              // keeps the E-mail tab lit up on mobile too.
+              const isActive =
+                item.path === "/admin"
+                  ? location.pathname === "/admin"
+                  : location.pathname === item.path ||
+                    location.pathname.startsWith(`${item.path}/`);
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex flex-col items-center gap-0.5 px-2 py-1.5 transition-colors ${
+                  className={`flex flex-col items-center gap-0.5 px-1 py-1.5 transition-colors ${
                     isActive ? "text-primary" : "text-muted-foreground"
                   }`}
                 >
